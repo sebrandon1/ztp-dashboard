@@ -25,15 +25,17 @@ export default function SpokeDetailPage() {
 
   useEffect(() => {
     if (!clusterName) return;
-    setLoading(true);
+    let cancelled = false;
     Promise.all([
       clusterAPI.getPipeline(clusterName).catch(() => null),
       clusterAPI.getPolicies(clusterName).catch(() => []),
     ]).then(([p, pol]) => {
+      if (cancelled) return;
       if (p) setPipeline(p);
       setPolicies(pol as PolicyInfo[]);
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, [clusterName]);
 
   // Debounced refetch on updateCounter changes
