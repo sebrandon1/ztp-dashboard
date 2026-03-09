@@ -1,0 +1,123 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  --color-surface: #0f172a;
+  --color-surface-raised: #1e293b;
+  --color-surface-overlay: #334155;
+  --color-border-subtle: #1e293b;
+  --color-border-default: #334155;
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border-default);
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-text-primary antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+}
+
+@utility btn-primary {
+  @apply bg-primary-600 text-white hover:bg-primary-500 focus:ring-primary-500 shadow-lg shadow-primary-600/20;
+}
+
+@utility btn-secondary {
+  @apply bg-surface-raised text-text-secondary border border-border-default hover:bg-surface-overlay hover:text-text-primary focus:ring-primary-500;
+}
+
+@utility btn-danger {
+  @apply bg-red-600/10 text-red-400 border border-red-500/20 hover:bg-red-600/20 focus:ring-red-500;
+}
+
+@utility btn-ghost {
+  @apply text-text-secondary hover:text-text-primary hover:bg-surface-raised focus:ring-primary-500;
+}
+
+@utility card {
+  @apply bg-surface-raised rounded-xl border border-border-subtle overflow-hidden;
+}
+
+@utility badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+@utility badge-success {
+  @apply bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20;
+}
+
+@utility badge-warning {
+  @apply bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20;
+}
+
+@utility badge-danger {
+  @apply bg-red-500/10 text-red-400 ring-1 ring-red-500/20;
+}
+
+@utility badge-info {
+  @apply bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20;
+}
+
+@utility badge-neutral {
+  @apply bg-slate-500/10 text-slate-400 ring-1 ring-slate-500/20;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Pulse animation for in-progress pipeline nodes */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(99, 102, 241, 0.2); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

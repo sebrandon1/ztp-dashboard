@@ -1,0 +1,95 @@
+package ws
+
+import (
+	"context"
+	"encoding/json"
+	"log/slog"
+	"sync"
+)
+
+type Hub struct {
+	clients    map[*Client]bool
+	register   chan *Client
+	unregister chan *Client
+	broadcast  chan Message
+	mu         sync.RWMutex
+}
+
+func NewHub() *Hub {
+	return &Hub{
+		clients:    make(map[*Client]bool),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		broadcast:  make(chan Message, 256),
+	}
+}
+
+func (h *Hub) Run(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			h.mu.Lock()
+			for client := range h.clients {
+				close(client.send)
+				delete(h.clients, client)
+			}
+			h.mu.Unlock()
+			return
+
+		case client := <-h.register:
+			h.mu.Lock()
+			h.clients[client] = true
+			h.mu.Unlock()
+			slog.Debug("websocket client connected", "total", h.ClientCount())
+
+		case client := <-h.unregister:
+			h.mu.Lock()
+			if _, ok := h.clients[client]; ok {
+				close(client.send)
+				delete(h.clients, client)
+			}
+			h.mu.Unlock()
+			slog.Debug("websocket client disconnected", "total", h.ClientCount())
+
+		case msg := <-h.broadcast:
+			data, err := json.Marshal(msg)
+			if err != nil {
+				slog.Error("error marshaling broadcast message", "error", err)
+				continue
+			}
+			h.mu.RLock()
+			for client := range h.clients {
+				select {
+				case client.send <- data:
+				default:
+					go func(c *Client) {
+						h.unregister <- c
+					}(client)
+				}
+			}
+			h.mu.RUnlock()
+		}
+	}
+}
+
+func (h *Hub) Register(client *Client) {
+	h.register <- client
+}
+
+func (h *Hub) Unregister(client *Client) {
+	h.unregister <- client
+}
+
+func (h *Hub) Broadcast(msg Message) {
+	select {
+	case h.broadcast <- msg:
+	default:
+		slog.Warn("broadcast channel full, dropping message", "type", msg.Type)
+	}
+}
+
+func (h *Hub) ClientCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
+}

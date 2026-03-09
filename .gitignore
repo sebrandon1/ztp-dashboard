@@ -1,0 +1,9 @@
+bin/
+frontend/dist/
+frontend/node_modules/
+internal/api/frontend_dist/
+!internal/api/frontend_dist/.gitkeep
+*.exe
+*.test
+*.out
+.DS_Store
