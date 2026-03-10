@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sebrandon1/ztp-dashboard/internal/ai"
+	"github.com/sebrandon1/ztp-dashboard/internal/hub"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
 )
 
@@ -74,6 +75,158 @@ func (s *Server) handleGetArgoApplications(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writeJSON(w, http.StatusOK, apps)
+}
+
+func (s *Server) handleGetArgoApplication(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	app, err := s.hubManager.GetArgoApplication(r.Context(), name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, app)
+}
+
+func (s *Server) handleSyncArgoApplication(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+
+	var opts hub.SyncOptions
+	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
+		// Body is optional; default options are fine
+		opts = hub.SyncOptions{}
+	}
+
+	if err := s.hubManager.SyncArgoApplication(r.Context(), name, opts); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "sync triggered", "application": name})
+}
+
+func (s *Server) handleRefreshArgoApplication(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if err := s.hubManager.RefreshArgoApplication(r.Context(), name); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "refresh triggered", "application": name})
+}
+
+func (s *Server) handleSetPolicyState(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("name")
+	policyName := r.PathValue("policyName")
+
+	var body struct {
+		Disabled bool `json:"disabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := s.hubManager.SetPolicyDisabled(r.Context(), clusterName, policyName, body.Disabled); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	action := "enabled"
+	if body.Disabled {
+		action = "disabled"
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": action, "policy": policyName})
+}
+
+func (s *Server) handleGetResource(w http.ResponseWriter, r *http.Request) {
+	group := r.PathValue("group")
+	version := r.PathValue("version")
+	resource := r.PathValue("resource")
+	namespace := r.PathValue("namespace")
+	name := r.PathValue("name")
+
+	obj, err := s.hubManager.GetResource(r.Context(), group, version, resource, namespace, name)
+	if err != nil {
+		if err.Error() == fmt.Sprintf("resource type %s/%s/%s is not allowed", group, version, resource) {
+			writeError(w, http.StatusForbidden, err.Error())
+			return
+		}
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, obj)
+}
+
+func (s *Server) handleGetPolicySummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := s.hubManager.GetPolicySummary(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
+}
+
+func (s *Server) handleGetArgoSummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := s.hubManager.GetArgoSummary(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
+}
+
+func (s *Server) handleDeleteCluster(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+
+	var body struct {
+		ConfirmName string `json:"confirmName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.ConfirmName != name {
+		writeError(w, http.StatusBadRequest, "cluster name confirmation does not match")
+		return
+	}
+
+	if err := s.hubManager.DeleteManagedCluster(r.Context(), name); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted", "cluster": name})
+}
+
+func (s *Server) handleDetachCluster(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+
+	var body struct {
+		ConfirmName string `json:"confirmName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.ConfirmName != name {
+		writeError(w, http.StatusBadRequest, "cluster name confirmation does not match")
+		return
+	}
+
+	if err := s.hubManager.DetachManagedCluster(r.Context(), name); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "detached", "cluster": name})
+}
+
+func (s *Server) handleListClusterResources(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	resources, err := s.hubManager.ListClusterResources(r.Context(), name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, resources)
 }
 
 func (s *Server) handleAIStatus(w http.ResponseWriter, _ *http.Request) {

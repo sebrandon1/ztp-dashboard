@@ -49,12 +49,24 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/clusters", s.handleListClusters)
 	mux.HandleFunc("GET /api/clusters/{name}", s.handleGetCluster)
 	mux.HandleFunc("GET /api/clusters/{name}/pipeline", s.handleGetPipeline)
+	mux.HandleFunc("GET /api/clusters/{name}/resources", s.handleListClusterResources)
+	mux.HandleFunc("DELETE /api/clusters/{name}", s.handleDeleteCluster)
+	mux.HandleFunc("POST /api/clusters/{name}/detach", s.handleDetachCluster)
 
 	// Policies
 	mux.HandleFunc("GET /api/clusters/{name}/policies", s.handleGetPolicies)
+	mux.HandleFunc("POST /api/clusters/{name}/policies/{policyName}/state", s.handleSetPolicyState)
+	mux.HandleFunc("GET /api/policies/summary", s.handleGetPolicySummary)
 
 	// ArgoCD
 	mux.HandleFunc("GET /api/argocd/applications", s.handleGetArgoApplications)
+	mux.HandleFunc("GET /api/argocd/applications/{name}", s.handleGetArgoApplication)
+	mux.HandleFunc("POST /api/argocd/applications/{name}/sync", s.handleSyncArgoApplication)
+	mux.HandleFunc("POST /api/argocd/applications/{name}/refresh", s.handleRefreshArgoApplication)
+	mux.HandleFunc("GET /api/argocd/summary", s.handleGetArgoSummary)
+
+	// Resources (YAML viewer)
+	mux.HandleFunc("GET /api/resources/{group}/{version}/{resource}/{namespace}/{name}", s.handleGetResource)
 
 	// AI
 	mux.HandleFunc("POST /api/ai/diagnose", s.handleAIDiagnose)
