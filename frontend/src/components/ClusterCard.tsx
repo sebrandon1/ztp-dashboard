@@ -1,8 +1,19 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Server, Clock, ChevronRight } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import type { ManagedClusterInfo } from '../types/api';
+
+function timeAgo(timestamp: string) {
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days > 0) return `${days}d ago`;
+  const hours = Math.floor(diff / 3600000);
+  if (hours > 0) return `${hours}h ago`;
+  const minutes = Math.floor(diff / 60000);
+  return `${minutes}m ago`;
+}
 
 interface ClusterCardProps {
   cluster: ManagedClusterInfo;
@@ -11,16 +22,7 @@ interface ClusterCardProps {
 
 export default function ClusterCard({ cluster, index }: ClusterCardProps) {
   const navigate = useNavigate();
-
-  const timeAgo = (timestamp: string) => {
-    const diff = Date.now() - new Date(timestamp).getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days > 0) return `${days}d ago`;
-    const hours = Math.floor(diff / 3600000);
-    if (hours > 0) return `${hours}h ago`;
-    const minutes = Math.floor(diff / 60000);
-    return `${minutes}m ago`;
-  };
+  const age = useMemo(() => timeAgo(cluster.creationTimestamp), [cluster.creationTimestamp]);
 
   return (
     <motion.div
@@ -60,7 +62,7 @@ export default function ClusterCard({ cluster, index }: ClusterCardProps) {
         </div>
         <div className="flex items-center gap-1 text-xs text-text-muted">
           <Clock className="w-3 h-3" />
-          {timeAgo(cluster.creationTimestamp)}
+          {age}
         </div>
       </div>
     </motion.div>
