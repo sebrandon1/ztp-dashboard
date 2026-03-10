@@ -109,6 +109,37 @@ export interface ArgoSummary {
   outOfSync: number;
 }
 
+export interface ClusterHealth {
+  clusterVersion?: ClusterVersionInfo;
+  nodeCount: number;
+  nodesReady: number;
+  operatorCount: number;
+  degradedCount: number;
+}
+
+export interface ClusterVersionInfo {
+  version: string;
+  channel?: string;
+  clusterID?: string;
+}
+
+export interface NodeInfo {
+  name: string;
+  role: string;
+  status: string;
+  kubeletVersion: string;
+  age: string;
+}
+
+export interface OperatorInfo {
+  name: string;
+  available: boolean;
+  degraded: boolean;
+  progressing: boolean;
+  message?: string;
+  version?: string;
+}
+
 export interface ResourceSummaryItem {
   kind: string;
   name: string;

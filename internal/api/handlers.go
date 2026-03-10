@@ -229,6 +229,36 @@ func (s *Server) handleListClusterResources(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, resources)
 }
 
+func (s *Server) handleGetClusterHealth(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	health, err := s.spokeService.GetHealth(r.Context(), name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, health)
+}
+
+func (s *Server) handleGetClusterNodes(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	nodes, err := s.spokeService.GetNodes(r.Context(), name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, nodes)
+}
+
+func (s *Server) handleGetClusterOperators(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	operators, err := s.spokeService.GetOperators(r.Context(), name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, operators)
+}
+
 func (s *Server) handleAIStatus(w http.ResponseWriter, _ *http.Request) {
 	connected, err := s.aiClient.GetStatus()
 	result := map[string]interface{}{
