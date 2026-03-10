@@ -12,15 +12,17 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     Promise.all([
       aiAPI.getStatus().catch(() => null),
       aiAPI.getModels().catch(() => []),
     ]).then(([status, m]) => {
+      if (cancelled) return;
       if (status) setAiStatus(status);
       setModels(m as AIModel[]);
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, []);
 
   const formatSize = (bytes: number) => {
