@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
-	"time"
+	"strconv"
 
 	"github.com/sebrandon1/ztp-dashboard/internal/ai"
 	"github.com/sebrandon1/ztp-dashboard/internal/hub"
+	"github.com/sebrandon1/ztp-dashboard/internal/store"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
 )
 
@@ -349,37 +349,47 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ws.ServeWS(s.wsHub, w, r)
 }
 
-// Event log - stores recent events in memory
-var (
-	recentEvents   []ws.WatchEvent
-	recentEventsMu sync.RWMutex
-	maxEvents      = 500
-)
-
-func init() {
-	recentEvents = make([]ws.WatchEvent, 0, maxEvents)
-}
-
-// RecordEvent stores an event in the recent events buffer
-func RecordEvent(event ws.WatchEvent) {
-	recentEventsMu.Lock()
-	defer recentEventsMu.Unlock()
-	if event.Timestamp == "" {
-		event.Timestamp = time.Now().UTC().Format(time.RFC3339)
-	}
-	recentEvents = append(recentEvents, event)
-	if len(recentEvents) > maxEvents {
-		recentEvents = recentEvents[len(recentEvents)-maxEvents:]
+// RecordEvent stores an event using the provided EventStore.
+func RecordEvent(eventStore *store.EventStore, event ws.WatchEvent) {
+	if err := eventStore.Insert(event); err != nil {
+		slog.Error("failed to record event", "error", err)
 	}
 }
 
-func (s *Server) handleGetEvents(w http.ResponseWriter, _ *http.Request) {
-	recentEventsMu.RLock()
-	defer recentEventsMu.RUnlock()
-	// Return in reverse chronological order
-	events := make([]ws.WatchEvent, len(recentEvents))
-	for i, e := range recentEvents {
-		events[len(recentEvents)-1-i] = e
+func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
+	q := store.EventQuery{
+		Query:        r.URL.Query().Get("q"),
+		Severity:     r.URL.Query().Get("severity"),
+		ResourceType: r.URL.Query().Get("resource_type"),
+		From:         r.URL.Query().Get("from"),
+		To:           r.URL.Query().Get("to"),
 	}
-	writeJSON(w, http.StatusOK, events)
+	if v := r.URL.Query().Get("limit"); v != "" {
+		q.Limit, _ = strconv.Atoi(v)
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		q.Offset, _ = strconv.Atoi(v)
+	}
+
+	events, total, err := s.eventStore.Query(q)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if events == nil {
+		events = []ws.WatchEvent{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"events": events,
+		"total":  total,
+	})
+}
+
+func (s *Server) handleGetEventStats(w http.ResponseWriter, _ *http.Request) {
+	stats, err := s.eventStore.GetStats()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
 }

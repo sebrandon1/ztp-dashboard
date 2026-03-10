@@ -175,6 +175,27 @@ export interface WSMessage {
   payload: WatchEvent;
 }
 
+export interface EventQueryParams {
+  q?: string;
+  severity?: string;
+  resource_type?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface EventsResponse {
+  events: WatchEvent[];
+  total: number;
+}
+
+export interface EventStats {
+  bySeverity: Record<string, number>;
+  byResourceType: Record<string, number>;
+  total: number;
+}
+
 export interface APIResponse<T> {
   success: boolean;
   data?: T;

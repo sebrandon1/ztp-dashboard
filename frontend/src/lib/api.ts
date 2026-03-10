@@ -14,7 +14,9 @@ import type {
   OperatorInfo,
   AIStatus,
   AIModel,
-  WatchEvent,
+  EventsResponse,
+  EventStats,
+  EventQueryParams,
   APIResponse,
 } from '../types/api';
 
@@ -82,5 +84,17 @@ export const aiAPI = {
 };
 
 export const eventsAPI = {
-  getRecent: () => unwrap<WatchEvent[]>(api.get('/events')),
+  query: (params?: EventQueryParams) => {
+    const searchParams = new URLSearchParams();
+    if (params?.q) searchParams.set('q', params.q);
+    if (params?.severity) searchParams.set('severity', params.severity);
+    if (params?.resource_type) searchParams.set('resource_type', params.resource_type);
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.to) searchParams.set('to', params.to);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return unwrap<EventsResponse>(api.get(`/events${qs ? `?${qs}` : ''}`));
+  },
+  getStats: () => unwrap<EventStats>(api.get('/events/stats')),
 };
