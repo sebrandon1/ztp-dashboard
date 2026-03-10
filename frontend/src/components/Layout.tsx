@@ -1,10 +1,11 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Server, Radio, Settings, Wifi, WifiOff, Zap } from 'lucide-react';
+import { LayoutDashboard, Server, Radio, Settings, Wifi, WifiOff, Zap, GitBranch } from 'lucide-react';
 import { useDashboardStore } from '../lib/store';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/clusters', icon: Server, label: 'Clusters' },
+  { to: '/argocd', icon: GitBranch, label: 'ArgoCD' },
   { to: '/events', icon: Radio, label: 'Events' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
