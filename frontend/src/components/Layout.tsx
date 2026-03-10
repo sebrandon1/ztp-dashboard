@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Server, Radio, Settings, Wifi, WifiOff, Zap, GitBranch } from 'lucide-react';
+import { LayoutDashboard, Server, Radio, Settings, Wifi, WifiOff, Zap, GitBranch, Sparkles } from 'lucide-react';
 import { useDashboardStore } from '../lib/store';
 
 const navItems = [
@@ -11,7 +11,7 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { wsConnected, hubStatus } = useDashboardStore();
+  const { wsConnected, hubStatus, aiConnected } = useDashboardStore();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -62,6 +62,13 @@ export default function Layout() {
             <span className={`flex items-center gap-1.5 ${wsConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
               {wsConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
               {wsConnected ? 'Live' : 'Reconnecting'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-text-muted">Ollama</span>
+            <span className={`flex items-center gap-1.5 ${aiConnected === null ? 'text-text-muted' : aiConnected ? 'text-emerald-400' : 'text-red-400'}`}>
+              <Sparkles className="w-3 h-3" />
+              {aiConnected === null ? 'Checking' : aiConnected ? 'Connected' : 'Offline'}
             </span>
           </div>
         </div>
