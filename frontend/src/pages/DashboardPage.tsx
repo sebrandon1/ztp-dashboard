@@ -188,7 +188,7 @@ export default function DashboardPage() {
             )}
 
             {/* Non-compliant policies list */}
-            {policySummary && policySummary.nonCompliantPolicies.length > 0 && (
+            {policySummary && policySummary.nonCompliantPolicies && policySummary.nonCompliantPolicies.length > 0 && (
               <div className="mt-4 pt-4 border-t border-border-subtle">
                 <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Non-Compliant Policies</p>
                 <div className="space-y-1 max-h-32 overflow-y-auto">

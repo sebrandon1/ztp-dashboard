@@ -8,6 +8,9 @@ interface DashboardState {
   hubStatus: HubStatus | null;
   setHubStatus: (status: HubStatus) => void;
 
+  aiConnected: boolean | null;
+  setAIConnected: (connected: boolean) => void;
+
   clusters: ManagedClusterInfo[];
   setClusters: (clusters: ManagedClusterInfo[]) => void;
 
@@ -29,6 +32,9 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 
   hubStatus: null,
   setHubStatus: (status) => set({ hubStatus: status }),
+
+  aiConnected: null,
+  setAIConnected: (connected) => set({ aiConnected: connected }),
 
   clusters: [],
   setClusters: (clusters) => set({ clusters }),
