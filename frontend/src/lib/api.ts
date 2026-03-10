@@ -9,6 +9,9 @@ import type {
   PolicySummary,
   ArgoSummary,
   ResourceSummaryItem,
+  ClusterHealth,
+  NodeInfo,
+  OperatorInfo,
   AIStatus,
   AIModel,
   WatchEvent,
@@ -42,6 +45,9 @@ export const clusterAPI = {
     unwrap<{ status: string }>(api.delete(`/clusters/${name}`, { data: { confirmName } })),
   detach: (name: string, confirmName: string) =>
     unwrap<{ status: string }>(api.post(`/clusters/${name}/detach`, { confirmName })),
+  getHealth: (name: string) => unwrap<ClusterHealth>(api.get(`/clusters/${name}/health`)),
+  getNodes: (name: string) => unwrap<NodeInfo[]>(api.get(`/clusters/${name}/health/nodes`)),
+  getOperators: (name: string) => unwrap<OperatorInfo[]>(api.get(`/clusters/${name}/health/operators`)),
 };
 
 export const argoAPI = {

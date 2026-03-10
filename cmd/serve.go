@@ -15,6 +15,7 @@ import (
 	"github.com/sebrandon1/ztp-dashboard/internal/api"
 	"github.com/sebrandon1/ztp-dashboard/internal/hub"
 	"github.com/sebrandon1/ztp-dashboard/internal/k8s"
+	"github.com/sebrandon1/ztp-dashboard/internal/spoke"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +64,10 @@ func runServe(_ *cobra.Command, _ []string) error {
 		go watcher.Start(ctx)
 	}
 
-	srv := api.NewServer(cfg, k8sClient, hubManager, aiClient, wsHub)
+	clientPool := k8s.NewClientPool(10*time.Minute, 20)
+	spokeService := spoke.NewService(k8sClient, clientPool)
+
+	srv := api.NewServer(cfg, k8sClient, hubManager, aiClient, wsHub, spokeService)
 
 	const maxPortAttempts = 10
 	var listener net.Listener

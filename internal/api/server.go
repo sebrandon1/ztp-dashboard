@@ -11,6 +11,7 @@ import (
 	"github.com/sebrandon1/ztp-dashboard/internal/config"
 	"github.com/sebrandon1/ztp-dashboard/internal/hub"
 	"github.com/sebrandon1/ztp-dashboard/internal/k8s"
+	"github.com/sebrandon1/ztp-dashboard/internal/spoke"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
 )
 
@@ -18,20 +19,22 @@ import (
 var frontendFS embed.FS
 
 type Server struct {
-	k8sClient  *k8s.Client
-	hubManager *hub.Manager
-	aiClient   *ai.Client
-	wsHub      *ws.Hub
-	cfg        config.Config
+	k8sClient    *k8s.Client
+	hubManager   *hub.Manager
+	aiClient     *ai.Client
+	wsHub        *ws.Hub
+	spokeService *spoke.Service
+	cfg          config.Config
 }
 
-func NewServer(cfg config.Config, k8sClient *k8s.Client, hubManager *hub.Manager, aiClient *ai.Client, wsHub *ws.Hub) *Server {
+func NewServer(cfg config.Config, k8sClient *k8s.Client, hubManager *hub.Manager, aiClient *ai.Client, wsHub *ws.Hub, spokeService *spoke.Service) *Server {
 	return &Server{
-		k8sClient:  k8sClient,
-		hubManager: hubManager,
-		aiClient:   aiClient,
-		wsHub:      wsHub,
-		cfg:        cfg,
+		k8sClient:    k8sClient,
+		hubManager:   hubManager,
+		aiClient:     aiClient,
+		wsHub:        wsHub,
+		spokeService: spokeService,
+		cfg:          cfg,
 	}
 }
 
@@ -52,6 +55,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/clusters/{name}/resources", s.handleListClusterResources)
 	mux.HandleFunc("DELETE /api/clusters/{name}", s.handleDeleteCluster)
 	mux.HandleFunc("POST /api/clusters/{name}/detach", s.handleDetachCluster)
+
+	// Spoke Health
+	mux.HandleFunc("GET /api/clusters/{name}/health", s.handleGetClusterHealth)
+	mux.HandleFunc("GET /api/clusters/{name}/health/nodes", s.handleGetClusterNodes)
+	mux.HandleFunc("GET /api/clusters/{name}/health/operators", s.handleGetClusterOperators)
 
 	// Policies
 	mux.HandleFunc("GET /api/clusters/{name}/policies", s.handleGetPolicies)
