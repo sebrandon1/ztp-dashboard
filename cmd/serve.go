@@ -16,6 +16,7 @@ import (
 	"github.com/sebrandon1/ztp-dashboard/internal/hub"
 	"github.com/sebrandon1/ztp-dashboard/internal/k8s"
 	"github.com/sebrandon1/ztp-dashboard/internal/spoke"
+	"github.com/sebrandon1/ztp-dashboard/internal/store"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
 	"github.com/spf13/cobra"
 )
@@ -53,13 +54,20 @@ func runServe(_ *cobra.Command, _ []string) error {
 
 	aiClient := ai.NewClient(cfg.OllamaEndpoint, cfg.OllamaModel)
 
+	eventStore, err := store.NewEventStore("ztp-events.db")
+	if err != nil {
+		return fmt.Errorf("opening event store: %w", err)
+	}
+	defer func() { _ = eventStore.Close() }()
+	eventStore.StartPurgeLoop(7*24*time.Hour, 1*time.Hour)
+
 	wsHub := ws.NewHub()
 	go wsHub.Run(ctx)
 
 	if k8sClient != nil {
 		watcher := ws.NewWatcher(k8sClient, wsHub)
 		watcher.OnEvent = func(event ws.WatchEvent) {
-			api.RecordEvent(event)
+			api.RecordEvent(eventStore, event)
 		}
 		go watcher.Start(ctx)
 	}
@@ -67,7 +75,7 @@ func runServe(_ *cobra.Command, _ []string) error {
 	clientPool := k8s.NewClientPool(10*time.Minute, 20)
 	spokeService := spoke.NewService(k8sClient, clientPool)
 
-	srv := api.NewServer(cfg, k8sClient, hubManager, aiClient, wsHub, spokeService)
+	srv := api.NewServer(cfg, k8sClient, hubManager, aiClient, wsHub, spokeService, eventStore)
 
 	const maxPortAttempts = 10
 	var listener net.Listener

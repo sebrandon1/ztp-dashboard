@@ -12,6 +12,7 @@ import (
 	"github.com/sebrandon1/ztp-dashboard/internal/hub"
 	"github.com/sebrandon1/ztp-dashboard/internal/k8s"
 	"github.com/sebrandon1/ztp-dashboard/internal/spoke"
+	"github.com/sebrandon1/ztp-dashboard/internal/store"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
 )
 
@@ -24,16 +25,18 @@ type Server struct {
 	aiClient     *ai.Client
 	wsHub        *ws.Hub
 	spokeService *spoke.Service
+	eventStore   *store.EventStore
 	cfg          config.Config
 }
 
-func NewServer(cfg config.Config, k8sClient *k8s.Client, hubManager *hub.Manager, aiClient *ai.Client, wsHub *ws.Hub, spokeService *spoke.Service) *Server {
+func NewServer(cfg config.Config, k8sClient *k8s.Client, hubManager *hub.Manager, aiClient *ai.Client, wsHub *ws.Hub, spokeService *spoke.Service, eventStore *store.EventStore) *Server {
 	return &Server{
 		k8sClient:    k8sClient,
 		hubManager:   hubManager,
 		aiClient:     aiClient,
 		wsHub:        wsHub,
 		spokeService: spokeService,
+		eventStore:   eventStore,
 		cfg:          cfg,
 	}
 }
@@ -81,8 +84,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/ai/status", s.handleAIStatus)
 	mux.HandleFunc("GET /api/ai/models", s.handleAIModels)
 
-	// Events (returns recent events for the event log page)
+	// Events
 	mux.HandleFunc("GET /api/events", s.handleGetEvents)
+	mux.HandleFunc("GET /api/events/stats", s.handleGetEventStats)
 
 	// WebSocket
 	mux.HandleFunc("GET /ws/watch", s.handleWebSocket)
