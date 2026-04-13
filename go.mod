@@ -1,13 +1,15 @@
 module github.com/sebrandon1/ztp-dashboard
 
-go 1.26.1
+go 1.26
+
+toolchain go1.26.2
 
 require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/spf13/cobra v1.10.2
 	k8s.io/apimachinery v0.35.3
 	k8s.io/client-go v0.35.3
-	modernc.org/sqlite v1.48.0
+	modernc.org/sqlite v1.48.1
 )
 
 require (
