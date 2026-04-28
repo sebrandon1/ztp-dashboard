@@ -41,6 +41,7 @@ export default function EventsPage() {
 
   // Load events on mount and when filters/pagination change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchEvents();
   }, [fetchEvents]);
 
@@ -67,6 +68,7 @@ export default function EventsPage() {
 
   // Reset to first page when filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOffset(0);
   }, [query, severityFilter]);
 

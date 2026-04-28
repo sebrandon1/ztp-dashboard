@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Pencil, Trash2, Server, HardDrive, Shield, GitBranch, Cpu, FileCode, Network, Box, Sparkles, Loader2, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -94,15 +94,7 @@ function EventRow({ event, autoAI }: { event: WatchEvent; autoAI: boolean }) {
   const sevConfig = severityConfig[event.severity] || severityConfig.info;
   const SeverityIcon = sevConfig.icon;
 
-  // Auto-AI: trigger on mount if enabled and event is bad/warning
-  useEffect(() => {
-    if (autoAI && !autoAITriggered.current && (event.severity === 'bad' || event.severity === 'warning')) {
-      autoAITriggered.current = true;
-      fetchAIInsight();
-    }
-  }, [autoAI]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchAIInsight = async () => {
+  const fetchAIInsight = useCallback(async () => {
     if (aiLoading) return;
     setAiLoading(true);
     setExpanded(true);
@@ -164,7 +156,16 @@ function EventRow({ event, autoAI }: { event: WatchEvent; autoAI: boolean }) {
     } finally {
       setAiLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiLoading]);
+
+  // Auto-AI: trigger on mount if enabled and event is bad/warning
+  useEffect(() => {
+    if (autoAI && !autoAITriggered.current && (event.severity === 'bad' || event.severity === 'warning')) {
+      autoAITriggered.current = true;
+      fetchAIInsight();
+    }
+  }, [autoAI, fetchAIInsight, event.severity]);
 
   const handleAIClick = (e: React.MouseEvent) => {
     e.stopPropagation();
