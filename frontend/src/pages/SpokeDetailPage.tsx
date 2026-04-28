@@ -64,6 +64,7 @@ export default function SpokeDetailPage() {
   // Load health data on demand when tab is selected
   useEffect(() => {
     if (tab !== 'health' || !clusterName || healthLoaded) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHealthLoading(true);
     Promise.all([
       clusterAPI.getHealth(clusterName).catch(() => null),
