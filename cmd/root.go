@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/sebrandon1/go-toolbox/cobrautil"
+	"github.com/sebrandon1/go-toolbox/confkit"
 	"github.com/sebrandon1/ztp-dashboard/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -19,11 +21,11 @@ interactive controls for hub/spoke cluster management.`,
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	return cobrautil.Execute(rootCmd)
 }
 
 func init() {
-	defaultKubeconfig := os.Getenv("KUBECONFIG")
+	defaultKubeconfig := confkit.EnvString("KUBECONFIG", "")
 	if defaultKubeconfig == "" {
 		home, err := os.UserHomeDir()
 		if err == nil {
@@ -31,20 +33,9 @@ func init() {
 		}
 	}
 
-	defaultLogFormat := os.Getenv("LOG_FORMAT")
-	if defaultLogFormat == "" {
-		defaultLogFormat = "text"
-	}
-
-	defaultOllamaEndpoint := os.Getenv("OLLAMA_ENDPOINT")
-	if defaultOllamaEndpoint == "" {
-		defaultOllamaEndpoint = "http://localhost:11434"
-	}
-
-	defaultOllamaModel := os.Getenv("OLLAMA_MODEL")
-	if defaultOllamaModel == "" {
-		defaultOllamaModel = "llama3.1"
-	}
+	defaultLogFormat := confkit.EnvString("LOG_FORMAT", "text")
+	defaultOllamaEndpoint := confkit.EnvString("OLLAMA_ENDPOINT", "http://localhost:11434")
+	defaultOllamaModel := confkit.EnvString("OLLAMA_MODEL", "llama3.1")
 
 	rootCmd.PersistentFlags().StringVar(&cfg.KubeConfig, "kubeconfig", defaultKubeconfig,
 		"Path to kubeconfig file (env: KUBECONFIG)")
