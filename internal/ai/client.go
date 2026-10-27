@@ -2,27 +2,33 @@ package ai
 
 import (
 	"bufio"
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/sebrandon1/go-toolbox/httpx"
 )
 
 type Client struct {
 	endpoint     string
 	defaultModel string
-	httpClient   *http.Client
+	// streamClient deliberately has no request timeout: streamed generation
+	// responses can last far longer than a fixed deadline.
+	streamClient *httpx.Client
 }
 
 func NewClient(endpoint, defaultModel string) *Client {
+	streamClient := httpx.NewClient(httpx.Options{BaseURL: endpoint})
+	// NewClient installs DefaultTimeout; streaming must not be cut short.
+	streamClient.HTTPClient.Timeout = 0
+
 	return &Client{
 		endpoint:     endpoint,
 		defaultModel: defaultModel,
-		httpClient: &http.Client{
-			Timeout: 0, // No timeout for streaming
-		},
+		streamClient: streamClient,
 	}
 }
 
@@ -50,8 +56,12 @@ type ModelsResponse struct {
 }
 
 func (c *Client) GetStatus() (bool, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(c.endpoint + "/api/tags")
+	client := httpx.NewClient(httpx.Options{BaseURL: c.endpoint, Timeout: 5 * time.Second})
+	req, err := client.NewRequest(context.Background(), http.MethodGet, "/api/tags", nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -60,15 +70,13 @@ func (c *Client) GetStatus() (bool, error) {
 }
 
 func (c *Client) ListModels() ([]ModelInfo, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(c.endpoint + "/api/tags")
-	if err != nil {
-		return nil, fmt.Errorf("connecting to ollama: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+	client := httpx.NewClient(httpx.Options{BaseURL: c.endpoint, Timeout: 10 * time.Second})
 
 	var models ModelsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&models); err != nil {
+	if err := client.DoJSON(context.Background(), http.MethodGet, "/api/tags", nil, &models); err != nil {
+		if httpx.IsNetworkError(err) {
+			return nil, fmt.Errorf("connecting to ollama: %w", err)
+		}
 		return nil, fmt.Errorf("decoding models response: %w", err)
 	}
 	return models.Models, nil
@@ -89,12 +97,12 @@ func (c *Client) GenerateStream(model, prompt string) (io.ReadCloser, error) {
 		Stream: true,
 	}
 
-	body, err := json.Marshal(reqBody)
+	req, err := c.streamClient.NewRequest(context.Background(), http.MethodPost, "/api/generate", reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling request: %w", err)
 	}
 
-	resp, err := c.httpClient.Post(c.endpoint+"/api/generate", "application/json", bytes.NewReader(body))
+	resp, err := c.streamClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("calling ollama: %w", err)
 	}
