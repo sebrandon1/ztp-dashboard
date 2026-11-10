@@ -8,7 +8,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v0.37.2
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )
 
 require (
