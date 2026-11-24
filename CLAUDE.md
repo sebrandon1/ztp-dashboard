@@ -20,6 +20,7 @@ make test                  # Run Go unit tests
 make coverage              # Run Go tests with coverage and enforce floor
 make lint                  # Run golangci-lint
 make frontend-lint         # Run frontend ESLint
+make frontend-test         # Run frontend unit tests (Vitest)
 
 # Individual steps
 make frontend-install      # npm install in frontend/

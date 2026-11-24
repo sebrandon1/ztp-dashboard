@@ -2,6 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useDashboardStore } from '../lib/store';
 import type { WSMessage } from '../types/api';
 
+const MAX_RECONNECT_DELAY_MS = 30000;
+
+/** Exponential backoff for reconnects: 1s, 2s, 4s… capped at 30s. */
+export function reconnectDelay(attempt: number): number {
+  return Math.min(1000 * Math.pow(2, attempt), MAX_RECONNECT_DELAY_MS);
+}
+
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -40,7 +47,7 @@ export function useWebSocket() {
         setWSConnected(false);
         wsRef.current = null;
 
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        const delay = reconnectDelay(reconnectAttempts.current);
         reconnectAttempts.current++;
         reconnectTimeoutRef.current = setTimeout(connect, delay);
       };

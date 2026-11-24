@@ -1,6 +1,8 @@
 bin/
 frontend/dist/
+frontend/dist-node/
 frontend/node_modules/
+*.tsbuildinfo
 internal/api/frontend_dist/
 !internal/api/frontend_dist/.gitkeep
 *.exe
