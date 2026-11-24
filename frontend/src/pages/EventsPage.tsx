@@ -10,11 +10,12 @@ const SEVERITIES = ['all', 'good', 'bad', 'warning', 'neutral', 'info'] as const
 const PAGE_SIZE = 50;
 
 export default function EventsPage() {
-  const { updateCounter } = useDashboardStore();
+  const { updateCounter, aiConnected } = useDashboardStore();
   const [paused, setPaused] = useState(false);
   const [query, setQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [autoAI, setAutoAI] = useState(false);
+  const aiAvailable = aiConnected !== false;
   const [events, setEvents] = useState<WatchEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -65,6 +66,14 @@ export default function EventsPage() {
     }, 5000);
     return () => clearTimeout(timer);
   }, [updateCounter]);
+
+  // Auto-AI cannot run without ollama, so turn it off when AI goes offline.
+  useEffect(() => {
+    if (!aiAvailable) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAutoAI(false);
+    }
+  }, [aiAvailable]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -119,8 +128,10 @@ export default function EventsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setAutoAI(!autoAI)}
-            className={`btn gap-2 ${autoAI ? 'bg-primary-600/20 text-primary-400 ring-1 ring-primary-500/30' : 'btn-secondary'}`}
-            title="Auto-analyze bad/warning events with AI"
+            disabled={!aiAvailable}
+            aria-disabled={!aiAvailable}
+            className={`btn gap-2 ${autoAI ? 'bg-primary-600/20 text-primary-400 ring-1 ring-primary-500/30' : 'btn-secondary'} ${!aiAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={aiAvailable ? 'Auto-analyze bad/warning events with AI' : 'AI is offline — start ollama to enable Auto-AI'}
           >
             <Sparkles className={`w-4 h-4 ${autoAI ? 'text-primary-400' : ''}`} />
             Auto-AI
