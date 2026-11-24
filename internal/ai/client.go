@@ -55,9 +55,9 @@ type ModelsResponse struct {
 	Models []ModelInfo `json:"models"`
 }
 
-func (c *Client) GetStatus() (bool, error) {
+func (c *Client) GetStatus(ctx context.Context) (bool, error) {
 	client := httpx.NewClient(httpx.Options{BaseURL: c.endpoint, Timeout: 5 * time.Second})
-	req, err := client.NewRequest(context.Background(), http.MethodGet, "/api/tags", nil)
+	req, err := client.NewRequest(ctx, http.MethodGet, "/api/tags", nil)
 	if err != nil {
 		return false, err
 	}
@@ -69,11 +69,11 @@ func (c *Client) GetStatus() (bool, error) {
 	return resp.StatusCode == http.StatusOK, nil
 }
 
-func (c *Client) ListModels() ([]ModelInfo, error) {
+func (c *Client) ListModels(ctx context.Context) ([]ModelInfo, error) {
 	client := httpx.NewClient(httpx.Options{BaseURL: c.endpoint, Timeout: 10 * time.Second})
 
 	var models ModelsResponse
-	if err := client.DoJSON(context.Background(), http.MethodGet, "/api/tags", nil, &models); err != nil {
+	if err := client.DoJSON(ctx, http.MethodGet, "/api/tags", nil, &models); err != nil {
 		if httpx.IsNetworkError(err) {
 			return nil, fmt.Errorf("connecting to ollama: %w", err)
 		}
@@ -86,7 +86,10 @@ func (c *Client) DefaultModel() string {
 	return c.defaultModel
 }
 
-func (c *Client) GenerateStream(model, prompt string) (io.ReadCloser, error) {
+// GenerateStream starts a streamed generation. The returned body is closed
+// when ctx is cancelled or when the caller closes it, which aborts the
+// upstream ollama request.
+func (c *Client) GenerateStream(ctx context.Context, model, prompt string) (io.ReadCloser, error) {
 	if model == "" {
 		model = c.defaultModel
 	}
@@ -97,7 +100,7 @@ func (c *Client) GenerateStream(model, prompt string) (io.ReadCloser, error) {
 		Stream: true,
 	}
 
-	req, err := c.streamClient.NewRequest(context.Background(), http.MethodPost, "/api/generate", reqBody)
+	req, err := c.streamClient.NewRequest(ctx, http.MethodPost, "/api/generate", reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling request: %w", err)
 	}

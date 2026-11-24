@@ -235,8 +235,8 @@ func (s *Server) handleGetClusterOperators(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, operators)
 }
 
-func (s *Server) handleAIStatus(w http.ResponseWriter, _ *http.Request) {
-	connected, err := s.aiClient.GetStatus()
+func (s *Server) handleAIStatus(w http.ResponseWriter, r *http.Request) {
+	connected, err := s.aiClient.GetStatus(r.Context())
 	result := map[string]interface{}{
 		"connected":    connected,
 		"endpoint":     s.cfg.OllamaEndpoint,
@@ -248,8 +248,8 @@ func (s *Server) handleAIStatus(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
-func (s *Server) handleAIModels(w http.ResponseWriter, _ *http.Request) {
-	models, err := s.aiClient.ListModels()
+func (s *Server) handleAIModels(w http.ResponseWriter, r *http.Request) {
+	models, err := s.aiClient.ListModels(r.Context())
 	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 		return
@@ -285,7 +285,16 @@ func (s *Server) handleAIDiagnose(w http.ResponseWriter, r *http.Request) {
 		prompt = ai.GeneralDiagnosePrompt(req.Context)
 	}
 
-	reader, err := s.aiClient.GenerateStream(req.Model, prompt)
+	// Check streaming support before writing any headers or status.
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming not supported")
+		return
+	}
+
+	// r.Context() is cancelled when the browser disconnects, which aborts the
+	// upstream ollama request instead of letting it generate to completion.
+	reader, err := s.aiClient.GenerateStream(r.Context(), req.Model, prompt)
 	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, fmt.Sprintf("ollama error: %v", err))
 		return
@@ -296,12 +305,6 @@ func (s *Server) handleAIDiagnose(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		writeError(w, http.StatusInternalServerError, "streaming not supported")
-		return
-	}
 
 	err = ai.StreamTokens(reader, func(token string, done bool) error {
 		data := map[string]interface{}{
