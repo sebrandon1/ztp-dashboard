@@ -13,6 +13,8 @@
 | `--allowed-origins` | `ZTP_ALLOWED_ORIGINS` | — (same-origin only) | Comma-separated extra origins allowed to call the API and open the WebSocket |
 | `--auth-token` | `ZTP_AUTH_TOKEN` | — (authentication disabled) | Bearer token required on `/api` and `/ws` routes |
 | `--auth-token-file` | `ZTP_AUTH_TOKEN_FILE` | — | File containing the bearer token, e.g. a mounted Kubernetes Secret |
+| `--ai-max-concurrent` | `ZTP_AI_MAX_CONCURRENT` | `2` | Maximum concurrent ollama generations |
+| `--ai-max-per-minute` | `ZTP_AI_MAX_PER_MINUTE` | `60` | Maximum ollama generations started per minute |
 
 ## Running with Ollama AI
 
@@ -86,3 +88,10 @@ server logs a warning at startup and accepts all callers.
 Enter the same token on the Settings page of the dashboard; it is stored in the
 browser's `localStorage` and sent with every API request and WebSocket
 connection.
+
+## AI Load Limits
+
+`POST /api/ai/diagnose` is bounded server-wide so bursts of events (Auto-AI) or
+many open browsers cannot saturate the ollama host. Requests over either limit
+receive `429` with `{"success":false,"error":"AI busy, retry shortly"}` and the UI
+shows a retry hint instead of an error.

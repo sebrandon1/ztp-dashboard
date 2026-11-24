@@ -14,6 +14,7 @@ import (
 	"github.com/sebrandon1/ztp-dashboard/internal/spoke"
 	"github.com/sebrandon1/ztp-dashboard/internal/store"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
+	"golang.org/x/time/rate"
 )
 
 //go:embed all:frontend_dist
@@ -27,9 +28,27 @@ type Server struct {
 	spokeService *spoke.Service
 	eventStore   *store.EventStore
 	cfg          config.Config
+
+	// aiSlots bounds concurrent ollama generations; aiLimiter bounds how many
+	// are started per minute. Both are server-wide.
+	aiSlots   chan struct{}
+	aiLimiter *rate.Limiter
 }
 
+const (
+	defaultAIMaxConcurrent = 2
+	defaultAIMaxPerMinute  = 60
+)
+
 func NewServer(cfg config.Config, k8sClient *k8s.Client, hubManager *hub.Manager, aiClient *ai.Client, wsHub *ws.Hub, spokeService *spoke.Service, eventStore *store.EventStore) *Server {
+	maxConcurrent := cfg.AIMaxConcurrent
+	if maxConcurrent < 1 {
+		maxConcurrent = defaultAIMaxConcurrent
+	}
+	maxPerMinute := cfg.AIMaxPerMinute
+	if maxPerMinute < 1 {
+		maxPerMinute = defaultAIMaxPerMinute
+	}
 	return &Server{
 		k8sClient:    k8sClient,
 		hubManager:   hubManager,
@@ -38,7 +57,27 @@ func NewServer(cfg config.Config, k8sClient *k8s.Client, hubManager *hub.Manager
 		spokeService: spokeService,
 		eventStore:   eventStore,
 		cfg:          cfg,
+		aiSlots:      make(chan struct{}, maxConcurrent),
+		aiLimiter:    rate.NewLimiter(rate.Limit(float64(maxPerMinute)/60), maxPerMinute),
 	}
+}
+
+// acquireAISlot reserves a concurrent generation slot, reporting false when the
+// per-minute limit or the concurrency limit is reached.
+func (s *Server) acquireAISlot() bool {
+	if !s.aiLimiter.Allow() {
+		return false
+	}
+	select {
+	case s.aiSlots <- struct{}{}:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Server) releaseAISlot() {
+	<-s.aiSlots
 }
 
 func (s *Server) Handler() http.Handler {

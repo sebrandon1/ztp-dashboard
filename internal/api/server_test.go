@@ -13,6 +13,7 @@ import (
 
 	"github.com/sebrandon1/ztp-dashboard/internal/k8s"
 	"github.com/sebrandon1/ztp-dashboard/internal/ws"
+	"golang.org/x/time/rate"
 )
 
 // decodeResponse parses the JSON envelope returned by writeJSON/writeError.
@@ -244,6 +245,45 @@ func TestAIDiagnoseStream(t *testing.T) {
 	}
 	if !strings.Contains(out, `"done":true`) {
 		t.Errorf("stream did not terminate with done:true: %q", out)
+	}
+}
+
+func TestAIDiagnoseConcurrencyLimit(t *testing.T) {
+	s := newTestServer(t)
+	s.aiSlots = make(chan struct{}, 1)
+	s.aiSlots <- struct{}{} // occupy the only slot
+
+	body := `{"type":"general","context":{"clusterName":"cluster-a"}}`
+	rec := do(t, s, http.MethodPost, "/api/ai/diagnose", body)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("diagnose with full slot = %d, want 429", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "AI busy") {
+		t.Errorf("body = %q, want AI busy message", rec.Body.String())
+	}
+}
+
+func TestAIDiagnoseReleasesSlot(t *testing.T) {
+	s := newTestServer(t)
+	body := `{"type":"general","context":{"clusterName":"cluster-a"}}`
+	if rec := do(t, s, http.MethodPost, "/api/ai/diagnose", body); rec.Code != http.StatusOK {
+		t.Fatalf("diagnose = %d, want 200", rec.Code)
+	}
+	if len(s.aiSlots) != 0 {
+		t.Errorf("slots in use after stream = %d, want 0", len(s.aiSlots))
+	}
+}
+
+func TestAIDiagnoseRateLimit(t *testing.T) {
+	s := newTestServer(t)
+	// Allow a single generation for this window; the call below consumes it.
+	s.aiLimiter = rate.NewLimiter(1, 1)
+	body := `{"type":"general","context":{"clusterName":"cluster-a"}}`
+	if rec := do(t, s, http.MethodPost, "/api/ai/diagnose", body); rec.Code != http.StatusOK {
+		t.Fatalf("first diagnose = %d, want 200", rec.Code)
+	}
+	if rec := do(t, s, http.MethodPost, "/api/ai/diagnose", body); rec.Code != http.StatusTooManyRequests {
+		t.Errorf("second diagnose = %d, want 429", rec.Code)
 	}
 }
 

@@ -285,6 +285,12 @@ func (s *Server) handleAIDiagnose(w http.ResponseWriter, r *http.Request) {
 		prompt = ai.GeneralDiagnosePrompt(req.Context)
 	}
 
+	if !s.acquireAISlot() {
+		writeError(w, http.StatusTooManyRequests, "AI busy, retry shortly")
+		return
+	}
+	defer s.releaseAISlot()
+
 	// Check streaming support before writing any headers or status.
 	flusher, ok := w.(http.Flusher)
 	if !ok {
