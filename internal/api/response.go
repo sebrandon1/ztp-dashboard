@@ -50,6 +50,26 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	})
 }
 
+// maxJSONBodyBytes caps the request body size accepted by JSON handlers.
+const maxJSONBodyBytes = 1 << 20 // 1 MiB
+
+// decodeJSON decodes a JSON request body into v, rejecting bodies larger than
+// maxJSONBodyBytes. Callers that allow an empty body can special-case io.EOF.
+func decodeJSON(w http.ResponseWriter, r *http.Request, v any) error {
+	return json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(v)
+}
+
+// writeDecodeError reports a request-body decode failure: 413 when the body
+// exceeded maxJSONBodyBytes, 400 otherwise.
+func writeDecodeError(w http.ResponseWriter, err error) {
+	var maxErr *http.MaxBytesError
+	if errors.As(err, &maxErr) {
+		writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+		return
+	}
+	writeError(w, http.StatusBadRequest, "invalid request body")
+}
+
 func writeError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
