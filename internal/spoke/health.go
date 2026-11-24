@@ -2,6 +2,7 @@ package spoke
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -13,6 +14,10 @@ import (
 
 	"github.com/sebrandon1/ztp-dashboard/internal/k8s"
 )
+
+// ErrNotConnected indicates the spoke service has no hub client, so spoke
+// kubeconfig secrets cannot be read.
+var ErrNotConnected = errors.New("not connected to cluster")
 
 var (
 	gvrClusterVersion = schema.GroupVersionResource{
@@ -34,8 +39,8 @@ type ClusterHealth struct {
 
 // ClusterVersionInfo holds cluster version details.
 type ClusterVersionInfo struct {
-	Version string `json:"version"`
-	Channel string `json:"channel,omitempty"`
+	Version   string `json:"version"`
+	Channel   string `json:"channel,omitempty"`
 	ClusterID string `json:"clusterID,omitempty"`
 }
 
@@ -74,6 +79,9 @@ func NewService(hubClient *k8s.Client, clientPool *k8s.ClientPool) *Service {
 
 // getSpokeClient extracts the kubeconfig from the hub secret and returns a spoke client.
 func (s *Service) getSpokeClient(ctx context.Context, clusterName string) (*k8s.SpokeClient, error) {
+	if s == nil || s.hubClient == nil {
+		return nil, ErrNotConnected
+	}
 	secretName := clusterName + "-admin-kubeconfig"
 	secret, err := s.hubClient.Clientset.CoreV1().Secrets(clusterName).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {

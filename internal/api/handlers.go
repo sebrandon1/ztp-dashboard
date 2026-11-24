@@ -32,7 +32,7 @@ func (s *Server) handleHubStatus(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleListClusters(w http.ResponseWriter, r *http.Request) {
 	clusters, err := s.hubManager.ListManagedClusters(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, clusters)
@@ -42,7 +42,7 @@ func (s *Server) handleGetCluster(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	cluster, err := s.hubManager.GetManagedCluster(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, cluster)
@@ -52,7 +52,7 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	pipeline, err := s.hubManager.GetPipelineStatus(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, pipeline)
@@ -62,7 +62,7 @@ func (s *Server) handleGetPolicies(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	policies, err := s.hubManager.GetClusterPolicies(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, policies)
@@ -71,7 +71,7 @@ func (s *Server) handleGetPolicies(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetArgoApplications(w http.ResponseWriter, r *http.Request) {
 	apps, err := s.hubManager.GetArgoApplications(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, apps)
@@ -81,7 +81,7 @@ func (s *Server) handleGetArgoApplication(w http.ResponseWriter, r *http.Request
 	name := r.PathValue("name")
 	app, err := s.hubManager.GetArgoApplication(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, app)
@@ -97,7 +97,7 @@ func (s *Server) handleSyncArgoApplication(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := s.hubManager.SyncArgoApplication(r.Context(), name, opts); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "sync triggered", "application": name})
@@ -106,7 +106,7 @@ func (s *Server) handleSyncArgoApplication(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleRefreshArgoApplication(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if err := s.hubManager.RefreshArgoApplication(r.Context(), name); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "refresh triggered", "application": name})
@@ -125,7 +125,7 @@ func (s *Server) handleSetPolicyState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.hubManager.SetPolicyDisabled(r.Context(), clusterName, policyName, body.Disabled); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 
@@ -145,11 +145,7 @@ func (s *Server) handleGetResource(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := s.hubManager.GetResource(r.Context(), group, version, resource, namespace, name)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("resource type %s/%s/%s is not allowed", group, version, resource) {
-			writeError(w, http.StatusForbidden, err.Error())
-			return
-		}
-		writeError(w, http.StatusNotFound, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, obj)
@@ -158,7 +154,7 @@ func (s *Server) handleGetResource(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetPolicySummary(w http.ResponseWriter, r *http.Request) {
 	summary, err := s.hubManager.GetPolicySummary(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, summary)
@@ -167,7 +163,7 @@ func (s *Server) handleGetPolicySummary(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleGetArgoSummary(w http.ResponseWriter, r *http.Request) {
 	summary, err := s.hubManager.GetArgoSummary(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, summary)
@@ -190,7 +186,7 @@ func (s *Server) handleDeleteCluster(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.hubManager.DeleteManagedCluster(r.Context(), name); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted", "cluster": name})
@@ -213,7 +209,7 @@ func (s *Server) handleDetachCluster(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.hubManager.DetachManagedCluster(r.Context(), name); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "detached", "cluster": name})
@@ -223,7 +219,7 @@ func (s *Server) handleListClusterResources(w http.ResponseWriter, r *http.Reque
 	name := r.PathValue("name")
 	resources, err := s.hubManager.ListClusterResources(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resources)
@@ -233,7 +229,7 @@ func (s *Server) handleGetClusterHealth(w http.ResponseWriter, r *http.Request) 
 	name := r.PathValue("name")
 	health, err := s.spokeService.GetHealth(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, health)
@@ -243,7 +239,7 @@ func (s *Server) handleGetClusterNodes(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	nodes, err := s.spokeService.GetNodes(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, nodes)
@@ -253,7 +249,7 @@ func (s *Server) handleGetClusterOperators(w http.ResponseWriter, r *http.Reques
 	name := r.PathValue("name")
 	operators, err := s.spokeService.GetOperators(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, operators)
@@ -373,7 +369,7 @@ func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 
 	events, total, err := s.eventStore.Query(q)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	if events == nil {
@@ -388,7 +384,7 @@ func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetEventStats(w http.ResponseWriter, _ *http.Request) {
 	stats, err := s.eventStore.GetStats()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)
