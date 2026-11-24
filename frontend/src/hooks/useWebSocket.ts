@@ -9,20 +9,25 @@ export function reconnectDelay(attempt: number): number {
   return Math.min(1000 * Math.pow(2, attempt), MAX_RECONNECT_DELAY_MS);
 }
 
+/** WebSocket URL for live updates; browsers cannot set handshake headers, so
+ *  the auth token travels as a query parameter. */
+export function buildWebSocketURL(token: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+  return `${protocol}//${window.location.host}/ws/watch${tokenQuery}`;
+}
+
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reconnectAttempts = useRef(0);
-  const { setWSConnected, handleWSMessage } = useDashboardStore();
+  const { setWSConnected, handleWSMessage, authToken } = useDashboardStore();
 
   useEffect(() => {
     function connect() {
       if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/watch`;
-
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(buildWebSocketURL(authToken));
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -67,5 +72,5 @@ export function useWebSocket() {
         wsRef.current.close();
       }
     };
-  }, [setWSConnected, handleWSMessage]);
+  }, [setWSConnected, handleWSMessage, authToken]);
 }

@@ -1,5 +1,23 @@
 # API Reference
 
+## Authentication
+
+When the server runs with `--auth-token` / `ZTP_AUTH_TOKEN`, all `/api/*` and
+`/ws/*` routes require `Authorization: Bearer <token>`. Requests without a valid
+token get `401` with `{"success":false,"error":"unauthorized"}`. `/healthz`,
+`/readyz` and the SPA are always public.
+
+```bash
+curl -H "Authorization: Bearer $ZTP_AUTH_TOKEN" localhost:8080/api/status
+```
+
+Browsers cannot set headers on a WebSocket handshake, so `/ws/watch` also
+accepts the token as a `token` query parameter:
+
+```
+ws://localhost:8080/ws/watch?token=<token>
+```
+
 ## REST Endpoints
 
 | Method | Path | Description |

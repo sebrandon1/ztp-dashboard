@@ -8,4 +8,6 @@ type Config struct {
 	OllamaModel    string
 	DBPath         string
 	AllowedOrigins []string
+	AuthToken      string
+	AuthTokenFile  string
 }

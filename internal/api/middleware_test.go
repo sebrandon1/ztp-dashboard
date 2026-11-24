@@ -127,3 +127,102 @@ func TestWebSocketOriginCheck(t *testing.T) {
 	}
 	_ = conn.Close()
 }
+
+func TestAuthMiddleware(t *testing.T) {
+	const token = "s3cr3t"
+
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := authMiddleware(token)(next)
+
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		header     string
+		wantStatus int
+	}{
+		{name: "api without token", method: http.MethodGet, path: "/api/status", wantStatus: http.StatusUnauthorized},
+		{name: "api with wrong bearer", method: http.MethodGet, path: "/api/status", header: "Bearer nope", wantStatus: http.StatusUnauthorized},
+		{name: "api with bearer", method: http.MethodGet, path: "/api/status", header: "Bearer " + token, wantStatus: http.StatusOK},
+		{name: "delete with bearer", method: http.MethodDelete, path: "/api/clusters/x", header: "Bearer " + token, wantStatus: http.StatusOK},
+		{name: "healthz is public", method: http.MethodGet, path: "/healthz", wantStatus: http.StatusOK},
+		{name: "readyz is public", method: http.MethodGet, path: "/readyz", wantStatus: http.StatusOK},
+		{name: "spa is public", method: http.MethodGet, path: "/dashboard", wantStatus: http.StatusOK},
+		{name: "ws without token", method: http.MethodGet, path: "/ws/watch", wantStatus: http.StatusUnauthorized},
+		{name: "ws with query token", method: http.MethodGet, path: "/ws/watch?token=" + token, wantStatus: http.StatusOK},
+		{name: "ws with wrong query token", method: http.MethodGet, path: "/ws/watch?token=nope", wantStatus: http.StatusUnauthorized},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			if tt.header != "" {
+				req.Header.Set("Authorization", tt.header)
+			}
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+		})
+	}
+}
+
+func TestAuthMiddlewareDisabledWithoutToken(t *testing.T) {
+	handler := authMiddleware("")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/status", nil))
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200 when no token is configured", rec.Code)
+	}
+}
+
+func TestAuthIntegration(t *testing.T) {
+	s := newTestServer(t)
+	s.cfg.AuthToken = "s3cr3t"
+	srv := httptest.NewServer(s.Handler())
+	t.Cleanup(srv.Close)
+
+	resp, err := http.Get(srv.URL + "/api/status")
+	if err != nil {
+		t.Fatalf("GET /api/status: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("unauthenticated /api/status = %d, want 401", resp.StatusCode)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/status", nil)
+	req.Header.Set("Authorization", "Bearer s3cr3t")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("authenticated GET /api/status: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("authenticated /api/status = %d, want 200", resp.StatusCode)
+	}
+
+	resp, err = http.Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatalf("GET /healthz: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("/healthz = %d, want 200 without a token", resp.StatusCode)
+	}
+
+	wsURL := "ws" + srv.URL[len("http"):] + "/ws/watch"
+	if _, _, err := websocket.DefaultDialer.Dial(wsURL, nil); err == nil {
+		t.Error("websocket dial without token succeeded, want rejection")
+	}
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL+"?token=s3cr3t", nil)
+	if err != nil {
+		t.Fatalf("websocket dial with token failed: %v", err)
+	}
+	_ = conn.Close()
+}
