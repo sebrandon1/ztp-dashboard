@@ -36,6 +36,7 @@ func init() {
 	defaultLogFormat := confkit.EnvString("LOG_FORMAT", "text")
 	defaultOllamaEndpoint := confkit.EnvString("OLLAMA_ENDPOINT", "http://localhost:11434")
 	defaultOllamaModel := confkit.EnvString("OLLAMA_MODEL", "llama3.1")
+	defaultDBPath := confkit.EnvString("ZTP_DB_PATH", "ztp-events.db")
 
 	rootCmd.PersistentFlags().StringVar(&cfg.KubeConfig, "kubeconfig", defaultKubeconfig,
 		"Path to kubeconfig file (env: KUBECONFIG)")
@@ -47,4 +48,6 @@ func init() {
 		"Ollama API endpoint (env: OLLAMA_ENDPOINT)")
 	rootCmd.PersistentFlags().StringVar(&cfg.OllamaModel, "ollama-model", defaultOllamaModel,
 		"Default ollama model (env: OLLAMA_MODEL)")
+	rootCmd.PersistentFlags().StringVar(&cfg.DBPath, "db-path", defaultDBPath,
+		"Path to SQLite event database (env: ZTP_DB_PATH)")
 }

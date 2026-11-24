@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -54,7 +55,12 @@ func runServe(_ *cobra.Command, _ []string) error {
 
 	aiClient := ai.NewClient(cfg.OllamaEndpoint, cfg.OllamaModel)
 
-	eventStore, err := store.NewEventStore("ztp-events.db")
+	if dir := filepath.Dir(cfg.DBPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return fmt.Errorf("creating event database directory: %w", err)
+		}
+	}
+	eventStore, err := store.NewEventStore(cfg.DBPath)
 	if err != nil {
 		return fmt.Errorf("opening event store: %w", err)
 	}
