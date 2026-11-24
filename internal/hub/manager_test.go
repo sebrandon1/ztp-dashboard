@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -339,8 +340,8 @@ func TestGetResource(t *testing.T) {
 
 	t.Run("not allowed", func(t *testing.T) {
 		_, err := m.GetResource(context.Background(), "", "v1", "secrets", "default", "x")
-		if err == nil || !strings.Contains(err.Error(), "is not allowed") {
-			t.Errorf("expected not-allowed error, got %v", err)
+		if !errors.Is(err, ErrResourceNotAllowed) {
+			t.Errorf("expected ErrResourceNotAllowed, got %v", err)
 		}
 	})
 
