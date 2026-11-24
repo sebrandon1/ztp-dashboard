@@ -6,4 +6,5 @@ type Config struct {
 	LogFormat      string
 	OllamaEndpoint string
 	OllamaModel    string
+	DBPath         string
 }
