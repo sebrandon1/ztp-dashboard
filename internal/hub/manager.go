@@ -3,6 +3,7 @@ package hub
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -13,6 +14,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/sebrandon1/ztp-dashboard/internal/k8s"
+)
+
+// Sentinel errors returned by Manager so callers (e.g. the HTTP layer) can map
+// them to specific responses instead of string-matching error messages.
+var (
+	// ErrNotConnected indicates the hub has no Kubernetes client configured.
+	ErrNotConnected = errors.New("not connected to cluster")
+	// ErrResourceNotAllowed indicates a resource type outside the allowed GVRs.
+	ErrResourceNotAllowed = errors.New("resource type not allowed")
 )
 
 type Manager struct {
@@ -70,7 +80,7 @@ func (m *Manager) GetStatus() HubStatus {
 
 func (m *Manager) ListManagedClusters(ctx context.Context) ([]ManagedClusterInfo, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -95,7 +105,7 @@ func (m *Manager) ListManagedClusters(ctx context.Context) ([]ManagedClusterInfo
 
 func (m *Manager) GetManagedCluster(ctx context.Context, name string) (*ManagedClusterInfo, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -112,7 +122,7 @@ func (m *Manager) GetManagedCluster(ctx context.Context, name string) (*ManagedC
 
 func (m *Manager) GetPipelineStatus(ctx context.Context, clusterName string) (*PipelineStatus, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -259,7 +269,7 @@ func deriveStatus(conditions []map[string]interface{}) string {
 
 func (m *Manager) GetClusterPolicies(ctx context.Context, clusterName string) ([]ResourceStatus, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -291,7 +301,7 @@ func (m *Manager) GetClusterPolicies(ctx context.Context, clusterName string) ([
 
 func (m *Manager) GetArgoApplications(ctx context.Context) ([]ResourceStatus, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -329,7 +339,7 @@ type ArgoApplicationDetail struct {
 
 func (m *Manager) GetArgoApplication(ctx context.Context, name string) (*ArgoApplicationDetail, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -379,7 +389,7 @@ type SyncOptions struct {
 
 func (m *Manager) SyncArgoApplication(ctx context.Context, name string, opts SyncOptions) error {
 	if m.client == nil {
-		return fmt.Errorf("not connected to cluster")
+		return ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -422,7 +432,7 @@ func (m *Manager) SyncArgoApplication(ctx context.Context, name string, opts Syn
 
 func (m *Manager) RefreshArgoApplication(ctx context.Context, name string) error {
 	if m.client == nil {
-		return fmt.Errorf("not connected to cluster")
+		return ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -452,7 +462,7 @@ func (m *Manager) RefreshArgoApplication(ctx context.Context, name string) error
 
 func (m *Manager) SetPolicyDisabled(ctx context.Context, namespace, policyName string, disabled bool) error {
 	if m.client == nil {
-		return fmt.Errorf("not connected to cluster")
+		return ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -486,12 +496,12 @@ func (m *Manager) SetPolicyDisabled(ctx context.Context, namespace, policyName s
 // Only resources matching the 9 watched GVRs are allowed.
 func (m *Manager) GetResource(ctx context.Context, group, version, resource, namespace, name string) (map[string]interface{}, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	gvr := schema.GroupVersionResource{Group: group, Version: version, Resource: resource}
 	if !isWatchedGVR(gvr) {
-		return nil, fmt.Errorf("resource type %s/%s/%s is not allowed", group, version, resource)
+		return nil, fmt.Errorf("%w: %s/%s/%s", ErrResourceNotAllowed, group, version, resource)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -528,7 +538,7 @@ func isWatchedGVR(gvr schema.GroupVersionResource) bool {
 // GetPolicySummary returns aggregate policy compliance across all clusters.
 func (m *Manager) GetPolicySummary(ctx context.Context) (*PolicySummary, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -578,12 +588,12 @@ func (m *Manager) GetPolicySummary(ctx context.Context) (*PolicySummary, error) 
 }
 
 type PolicySummary struct {
-	Total               int                    `json:"total"`
-	Compliant           int                    `json:"compliant"`
-	NonCompliant        int                    `json:"nonCompliant"`
-	Unknown             int                    `json:"unknown"`
-	Clusters            []ClusterPolicySummary `json:"clusters"`
-	NonCompliantPolicies []NonCompliantPolicy  `json:"nonCompliantPolicies"`
+	Total                int                    `json:"total"`
+	Compliant            int                    `json:"compliant"`
+	NonCompliant         int                    `json:"nonCompliant"`
+	Unknown              int                    `json:"unknown"`
+	Clusters             []ClusterPolicySummary `json:"clusters"`
+	NonCompliantPolicies []NonCompliantPolicy   `json:"nonCompliantPolicies"`
 }
 
 type ClusterPolicySummary struct {
@@ -641,7 +651,7 @@ type ArgoSummary struct {
 // DeleteManagedCluster removes a ManagedCluster CR from the hub.
 func (m *Manager) DeleteManagedCluster(ctx context.Context, name string) error {
 	if m.client == nil {
-		return fmt.Errorf("not connected to cluster")
+		return ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -665,7 +675,7 @@ func (m *Manager) DetachManagedCluster(ctx context.Context, name string) error {
 // ListClusterResources lists resources in a cluster namespace for pre-delete review.
 func (m *Manager) ListClusterResources(ctx context.Context, clusterName string) ([]ResourceSummary, error) {
 	if m.client == nil {
-		return nil, fmt.Errorf("not connected to cluster")
+		return nil, ErrNotConnected
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)

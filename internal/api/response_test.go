@@ -2,9 +2,17 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/sebrandon1/ztp-dashboard/internal/hub"
+	"github.com/sebrandon1/ztp-dashboard/internal/spoke"
 )
 
 func TestWriteJSON(t *testing.T) {
@@ -205,6 +213,40 @@ func TestWriteError(t *testing.T) {
 			// Data should be nil/omitted for error responses
 			if resp.Data != nil {
 				t.Errorf("data should be nil for error responses, got %v", resp.Data)
+			}
+		})
+	}
+}
+
+func TestStatusForError(t *testing.T) {
+	wrapped := func(err error) error {
+		return fmt.Errorf("context: %w", err)
+	}
+
+	tests := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"nil", nil, http.StatusOK},
+		{"hub not connected", hub.ErrNotConnected, http.StatusServiceUnavailable},
+		{"hub not connected wrapped", wrapped(hub.ErrNotConnected), http.StatusServiceUnavailable},
+		{"spoke not connected", spoke.ErrNotConnected, http.StatusServiceUnavailable},
+		{"resource not allowed", wrapped(fmt.Errorf("%w: v1/v1/secrets", hub.ErrResourceNotAllowed)), http.StatusForbidden},
+		{"k8s not found", apierrors.NewNotFound(schema.GroupResource{Resource: "managedclusters"}, "x"), http.StatusNotFound},
+		{"k8s not found wrapped", wrapped(apierrors.NewNotFound(schema.GroupResource{Resource: "managedclusters"}, "x")), http.StatusNotFound},
+		{"k8s forbidden", apierrors.NewForbidden(schema.GroupResource{Resource: "secrets"}, "x", errors.New("denied")), http.StatusForbidden},
+		{"k8s conflict", apierrors.NewConflict(schema.GroupResource{Resource: "policies"}, "x", errors.New("conflict")), http.StatusConflict},
+		{"k8s already exists", apierrors.NewAlreadyExists(schema.GroupResource{Resource: "policies"}, "x"), http.StatusConflict},
+		{"k8s invalid", apierrors.NewInvalid(schema.GroupKind{Kind: "ManagedCluster"}, "x", nil), http.StatusBadRequest},
+		{"k8s bad request", apierrors.NewBadRequest("bad"), http.StatusBadRequest},
+		{"unknown error", errors.New("boom"), http.StatusInternalServerError},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := statusForError(tt.err); got != tt.want {
+				t.Errorf("statusForError(%v) = %d, want %d", tt.err, got, tt.want)
 			}
 		})
 	}
