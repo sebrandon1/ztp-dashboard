@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -198,6 +199,8 @@ func (s *Service) GetNodes(ctx context.Context, clusterName string) ([]NodeInfo,
 				}
 			}
 		}
+		// Sort so the role string is deterministic (map iteration order is not).
+		sort.Strings(roles)
 		if len(roles) > 0 {
 			info.Role = strings.Join(roles, ",")
 		} else {
