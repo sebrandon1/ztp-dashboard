@@ -112,6 +112,11 @@ function EventRow({ event, autoAI }: { event: WatchEvent; autoAI: boolean }) {
       };
 
       const res = await aiAPI.diagnose(context, undefined, undefined);
+      if (res.status === 429) {
+        setAiInsight('AI busy — retry shortly.');
+        setAiLoading(false);
+        return;
+      }
       if (!res.ok) {
         setAiInsight('Failed to get AI insight.');
         setAiLoading(false);

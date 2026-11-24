@@ -41,6 +41,8 @@ func init() {
 	defaultAllowedOrigins := parseOrigins(confkit.EnvString("ZTP_ALLOWED_ORIGINS", ""))
 	defaultAuthToken := confkit.EnvString("ZTP_AUTH_TOKEN", "")
 	defaultAuthTokenFile := confkit.EnvString("ZTP_AUTH_TOKEN_FILE", "")
+	defaultAIMaxConcurrent := confkit.EnvInt("ZTP_AI_MAX_CONCURRENT", 2)
+	defaultAIMaxPerMinute := confkit.EnvInt("ZTP_AI_MAX_PER_MINUTE", 60)
 
 	rootCmd.PersistentFlags().StringVar(&cfg.KubeConfig, "kubeconfig", defaultKubeconfig,
 		"Path to kubeconfig file (env: KUBECONFIG)")
@@ -60,6 +62,10 @@ func init() {
 		"Bearer token required on /api and /ws routes; empty disables authentication (env: ZTP_AUTH_TOKEN)")
 	rootCmd.PersistentFlags().StringVar(&cfg.AuthTokenFile, "auth-token-file", defaultAuthTokenFile,
 		"File containing the bearer token, for Kubernetes Secret mounts (env: ZTP_AUTH_TOKEN_FILE)")
+	rootCmd.PersistentFlags().IntVar(&cfg.AIMaxConcurrent, "ai-max-concurrent", defaultAIMaxConcurrent,
+		"Maximum concurrent ollama generations (env: ZTP_AI_MAX_CONCURRENT)")
+	rootCmd.PersistentFlags().IntVar(&cfg.AIMaxPerMinute, "ai-max-per-minute", defaultAIMaxPerMinute,
+		"Maximum ollama generations started per minute (env: ZTP_AI_MAX_PER_MINUTE)")
 }
 
 // parseOrigins splits a comma-separated origin list, trimming blanks.

@@ -13,6 +13,9 @@ export function useAI() {
 
     try {
       const res = await aiAPI.diagnose(context, model, type);
+      if (res.status === 429) {
+        throw new Error('AI busy, retry shortly');
+      }
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error || 'AI diagnosis failed');

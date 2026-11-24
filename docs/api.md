@@ -32,7 +32,7 @@ ws://localhost:8080/ws/watch?token=<token>
 | `GET` | `/api/events` | Recent events |
 | `GET` | `/api/ai/status` | Ollama status |
 | `GET` | `/api/ai/models` | Available models |
-| `POST` | `/api/ai/diagnose` | AI diagnosis (SSE stream) |
+| `POST` | `/api/ai/diagnose` | AI diagnosis (SSE stream; `429` when the AI concurrency or per-minute limit is reached) |
 
 ## WebSocket
 
