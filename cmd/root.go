@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sebrandon1/go-toolbox/cobrautil"
 	"github.com/sebrandon1/go-toolbox/confkit"
@@ -37,6 +38,7 @@ func init() {
 	defaultOllamaEndpoint := confkit.EnvString("OLLAMA_ENDPOINT", "http://localhost:11434")
 	defaultOllamaModel := confkit.EnvString("OLLAMA_MODEL", "llama3.1")
 	defaultDBPath := confkit.EnvString("ZTP_DB_PATH", "ztp-events.db")
+	defaultAllowedOrigins := parseOrigins(confkit.EnvString("ZTP_ALLOWED_ORIGINS", ""))
 
 	rootCmd.PersistentFlags().StringVar(&cfg.KubeConfig, "kubeconfig", defaultKubeconfig,
 		"Path to kubeconfig file (env: KUBECONFIG)")
@@ -50,4 +52,17 @@ func init() {
 		"Default ollama model (env: OLLAMA_MODEL)")
 	rootCmd.PersistentFlags().StringVar(&cfg.DBPath, "db-path", defaultDBPath,
 		"Path to SQLite event database (env: ZTP_DB_PATH)")
+	rootCmd.PersistentFlags().StringSliceVar(&cfg.AllowedOrigins, "allowed-origins", defaultAllowedOrigins,
+		"Origins allowed to call the API and open the WebSocket, e.g. https://dashboard.example.com (env: ZTP_ALLOWED_ORIGINS, comma-separated)")
+}
+
+// parseOrigins splits a comma-separated origin list, trimming blanks.
+func parseOrigins(value string) []string {
+	var origins []string
+	for _, part := range strings.Split(value, ",") {
+		if origin := strings.TrimSpace(part); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	return origins
 }

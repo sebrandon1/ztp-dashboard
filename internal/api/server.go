@@ -93,8 +93,13 @@ func (s *Server) Handler() http.Handler {
 	// SPA
 	mux.Handle("/", spaHandler())
 
-	handler := recoveryMiddleware(loggingMiddleware(corsMiddleware(mux)))
+	handler := recoveryMiddleware(loggingMiddleware(corsMiddleware(s.cfg.AllowedOrigins)(mux)))
 	return handler
+}
+
+// originAllowed reports whether r may open the live-update WebSocket.
+func (s *Server) originAllowed(r *http.Request) bool {
+	return originAllowed(r, s.cfg.AllowedOrigins)
 }
 
 func spaHandler() http.Handler {

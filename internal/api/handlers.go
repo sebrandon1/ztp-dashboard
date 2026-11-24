@@ -325,7 +325,7 @@ func (s *Server) handleAIDiagnose(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	ws.ServeWS(s.wsHub, w, r)
+	ws.ServeWS(s.wsHub, w, r, s.originAllowed)
 }
 
 // RecordEvent stores an event using the provided EventStore.

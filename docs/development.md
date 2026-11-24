@@ -29,6 +29,11 @@ make frontend-test
 make lint
 ```
 
+The Vite dev server proxies with `changeOrigin`, so the backend sees
+`Origin: http://localhost:5173`. Start the backend with
+`ZTP_ALLOWED_ORIGINS=http://localhost:5173 make run` so cross-origin
+requests and the WebSocket are accepted.
+
 ## Project Structure
 
 ```
