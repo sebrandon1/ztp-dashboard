@@ -1,7 +1,8 @@
-.PHONY: all build test lint run stop clean frontend-install frontend-dev frontend-build frontend-lint embed-frontend docker-build help
+.PHONY: all build test coverage lint run stop clean frontend-install frontend-dev frontend-build frontend-lint embed-frontend docker-build help
 
 IMAGE_NAME ?= ghcr.io/sebrandon1/ztp-dashboard
 IMAGE_TAG ?= latest
+COVERAGE_MIN ?= 23
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -22,6 +23,15 @@ build: frontend-build embed-frontend
 test:
 	@echo "Running tests..."
 	$(GOTEST) -v -race -cover ./...
+
+## coverage: Run tests with a coverage profile and enforce a minimum total
+coverage:
+	@echo "Running tests with coverage..."
+	$(GOTEST) -race -coverprofile=coverage.out ./...
+	@TOTAL=$$(go tool cover -func=coverage.out | tail -1 | awk '{print $$3}' | tr -d '%'); \
+	echo "Total coverage: $$TOTAL% (minimum: $(COVERAGE_MIN)%)"; \
+	awk "BEGIN {exit !($$TOTAL >= $(COVERAGE_MIN))}" || { \
+		echo "ERROR: coverage $$TOTAL% is below the $(COVERAGE_MIN)% floor"; exit 1; }
 
 ## lint: Run golangci-lint
 lint:

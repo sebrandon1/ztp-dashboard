@@ -19,6 +19,9 @@ make run
 # Run tests
 make test
 
+# Run tests with coverage and enforce the minimum total
+make coverage
+
 # Lint
 make lint
 ```

@@ -17,6 +17,7 @@ make stop                  # Kill any running dashboard server processes
 
 # Testing
 make test                  # Run Go unit tests
+make coverage              # Run Go tests with coverage and enforce floor
 make lint                  # Run golangci-lint
 make frontend-lint         # Run frontend ESLint
 

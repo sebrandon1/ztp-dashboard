@@ -56,8 +56,8 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Test
-        run: go test -race -cover ./...
+      - name: Test with coverage floor
+        run: make coverage
 
       - name: Vet
         run: go vet ./...
