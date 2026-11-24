@@ -292,8 +292,8 @@ func TestCORSOptions(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Errorf("OPTIONS = %d, want 204", rec.Code)
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
-		t.Errorf("Allow-Origin = %q, want *", got)
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("Allow-Origin = %q, want empty for requests without an Origin header", got)
 	}
 }
 

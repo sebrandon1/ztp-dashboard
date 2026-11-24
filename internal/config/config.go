@@ -7,4 +7,5 @@ type Config struct {
 	OllamaEndpoint string
 	OllamaModel    string
 	DBPath         string
+	AllowedOrigins []string
 }

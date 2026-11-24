@@ -18,9 +18,6 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(_ *http.Request) bool {
-		return true
-	},
 }
 
 type Client struct {
@@ -29,8 +26,15 @@ type Client struct {
 	send chan []byte
 }
 
-func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+// ServeWS upgrades the request to a WebSocket. checkOrigin decides whether the
+// request's Origin header is allowed; a nil func allows every origin.
+func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, checkOrigin func(*http.Request) bool) {
+	up := upgrader
+	if checkOrigin == nil {
+		checkOrigin = func(*http.Request) bool { return true }
+	}
+	up.CheckOrigin = checkOrigin
+	conn, err := up.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("websocket upgrade error", "error", err)
 		return
