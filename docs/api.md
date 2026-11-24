@@ -30,6 +30,7 @@ ws://localhost:8080/ws/watch?token=<token>
 | `DELETE` | `/api/clusters/:name` | Delete the ManagedCluster (detaches from ACM; body must confirm the name) |
 | `GET` | `/api/argocd/applications` | ArgoCD applications |
 | `GET` | `/api/events` | Recent events |
+| `GET` | `/api/events/export` | Stream all matching events as `?format=csv` or `?format=json` (NDJSON) |
 | `GET` | `/api/ai/status` | Ollama status |
 | `GET` | `/api/ai/models` | Available models |
 | `POST` | `/api/ai/diagnose` | AI diagnosis (SSE stream; `429` when the AI concurrency or per-minute limit is reached) |

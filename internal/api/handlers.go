@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/sebrandon1/ztp-dashboard/internal/ai"
 	"github.com/sebrandon1/ztp-dashboard/internal/hub"
@@ -341,20 +343,27 @@ func RecordEvent(eventStore *store.EventStore, event ws.WatchEvent) {
 	}
 }
 
-func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
+// eventQueryFromRequest builds an EventQuery from the request's URL parameters.
+func eventQueryFromRequest(r *http.Request) store.EventQuery {
+	v := r.URL.Query()
 	q := store.EventQuery{
-		Query:        r.URL.Query().Get("q"),
-		Severity:     r.URL.Query().Get("severity"),
-		ResourceType: r.URL.Query().Get("resource_type"),
-		From:         r.URL.Query().Get("from"),
-		To:           r.URL.Query().Get("to"),
+		Query:        v.Get("q"),
+		Severity:     v.Get("severity"),
+		ResourceType: v.Get("resource_type"),
+		From:         v.Get("from"),
+		To:           v.Get("to"),
 	}
-	if v := r.URL.Query().Get("limit"); v != "" {
+	if v := v.Get("limit"); v != "" {
 		q.Limit, _ = strconv.Atoi(v)
 	}
-	if v := r.URL.Query().Get("offset"); v != "" {
+	if v := v.Get("offset"); v != "" {
 		q.Offset, _ = strconv.Atoi(v)
 	}
+	return q
+}
+
+func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
+	q := eventQueryFromRequest(r)
 
 	events, total, err := s.eventStore.Query(q)
 	if err != nil {
@@ -368,6 +377,56 @@ func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 		"events": events,
 		"total":  total,
 	})
+}
+
+// handleExportEvents streams every event matching the same filters as
+// handleGetEvents as CSV or newline-delimited JSON.
+func (s *Server) handleExportEvents(w http.ResponseWriter, r *http.Request) {
+	q := eventQueryFromRequest(r)
+
+	var contentType, filename string
+	switch format := strings.ToLower(r.URL.Query().Get("format")); format {
+	case "", "json":
+		contentType, filename = "application/x-ndjson", "ztp-events.ndjson"
+	case "csv":
+		contentType, filename = "text/csv", "ztp-events.csv"
+	default:
+		writeError(w, http.StatusBadRequest, "format must be csv or json")
+		return
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+
+	if strings.HasSuffix(filename, ".csv") {
+		s.writeEventsCSV(w, q)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	if err := s.eventStore.Iterate(q, func(e ws.WatchEvent) error {
+		return enc.Encode(e)
+	}); err != nil {
+		slog.Error("exporting events", "format", "json", "error", err)
+	}
+}
+
+func (s *Server) writeEventsCSV(w http.ResponseWriter, q store.EventQuery) {
+	cw := csv.NewWriter(w)
+	_ = cw.Write([]string{"timestamp", "severity", "event_type", "resource_type", "name", "namespace", "summary", "insight"})
+	err := s.eventStore.Iterate(q, func(e ws.WatchEvent) error {
+		return cw.Write([]string{
+			e.Timestamp, e.Severity, string(e.EventType), e.ResourceType,
+			e.Name, e.Namespace, e.Summary, e.Insight,
+		})
+	})
+	cw.Flush()
+	if err != nil {
+		slog.Error("exporting events", "format", "csv", "error", err)
+	}
+	if err := cw.Error(); err != nil {
+		slog.Error("flushing event CSV", "error", err)
+	}
 }
 
 func (s *Server) handleGetEventStats(w http.ResponseWriter, _ *http.Request) {

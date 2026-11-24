@@ -143,22 +143,56 @@ func (s *EventStore) Query(q EventQuery) ([]ws.WatchEvent, int, error) {
 
 	var events []ws.WatchEvent
 	for rows.Next() {
-		var e ws.WatchEvent
-		var dataStr sql.NullString
-		if err := rows.Scan(&e.EventType, &e.ResourceType, &e.Name, &e.Namespace,
-			&e.Summary, &e.Severity, &e.Insight, &dataStr, &e.Timestamp); err != nil {
-			return nil, 0, fmt.Errorf("scanning event row: %w", err)
-		}
-		if dataStr.Valid && dataStr.String != "" {
-			var data any
-			if err := json.Unmarshal([]byte(dataStr.String), &data); err == nil {
-				e.Data = data
-			}
+		e, err := scanEvent(rows)
+		if err != nil {
+			return nil, 0, err
 		}
 		events = append(events, e)
 	}
 
 	return events, total, nil
+}
+
+// Iterate streams every event matching q, ignoring Limit and Offset, in the
+// same order as Query. The callback's error stops iteration.
+func (s *EventStore) Iterate(q EventQuery, fn func(ws.WatchEvent) error) error {
+	where, args := buildWhere(q)
+	querySQL := "SELECT event_type, resource_type, name, namespace, summary, severity, insight, data, timestamp FROM events" +
+		where + " ORDER BY timestamp DESC"
+
+	rows, err := s.db.Query(querySQL, args...)
+	if err != nil {
+		return fmt.Errorf("querying events: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		e, err := scanEvent(rows)
+		if err != nil {
+			return err
+		}
+		if err := fn(e); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
+// scanEvent reads one event row selected by Query or Iterate.
+func scanEvent(rows *sql.Rows) (ws.WatchEvent, error) {
+	var e ws.WatchEvent
+	var dataStr sql.NullString
+	if err := rows.Scan(&e.EventType, &e.ResourceType, &e.Name, &e.Namespace,
+		&e.Summary, &e.Severity, &e.Insight, &dataStr, &e.Timestamp); err != nil {
+		return e, fmt.Errorf("scanning event row: %w", err)
+	}
+	if dataStr.Valid && dataStr.String != "" {
+		var data any
+		if err := json.Unmarshal([]byte(dataStr.String), &data); err == nil {
+			e.Data = data
+		}
+	}
+	return e, nil
 }
 
 func buildWhere(q EventQuery) (string, []any) {

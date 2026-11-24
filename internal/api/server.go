@@ -125,6 +125,7 @@ func (s *Server) Handler() http.Handler {
 	// Events
 	mux.HandleFunc("GET /api/events", s.handleGetEvents)
 	mux.HandleFunc("GET /api/events/stats", s.handleGetEventStats)
+	mux.HandleFunc("GET /api/events/export", s.handleExportEvents)
 
 	// WebSocket
 	mux.HandleFunc("GET /ws/watch", s.handleWebSocket)
