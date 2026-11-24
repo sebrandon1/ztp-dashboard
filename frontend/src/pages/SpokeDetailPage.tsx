@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, GitBranch, Shield, Sparkles, Loader2, Code, Trash2, Unlink, HeartPulse, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, GitBranch, Shield, Sparkles, Loader2, Code, Trash2, HeartPulse, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { clusterAPI, resourceAPI } from '../lib/api';
 import { useDashboardStore } from '../lib/store';
@@ -32,7 +32,6 @@ export default function SpokeDetailPage() {
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthLoaded, setHealthLoaded] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showDetachModal, setShowDetachModal] = useState(false);
   const { updateCounter } = useDashboardStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -124,17 +123,6 @@ export default function SpokeDetailPage() {
     }
   };
 
-  const handleDetachCluster = async () => {
-    if (!clusterName) return;
-    try {
-      await clusterAPI.detach(clusterName, clusterName);
-      toast.success(`Cluster ${clusterName} detached`);
-      navigate('/clusters');
-    } catch {
-      toast.error('Failed to detach cluster');
-    }
-  };
-
   const tabs: { key: Tab; label: string; icon: typeof GitBranch }[] = [
     { key: 'pipeline', label: 'Pipeline', icon: GitBranch },
     { key: 'health', label: 'Health', icon: HeartPulse },
@@ -161,13 +149,6 @@ export default function SpokeDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowDetachModal(true)}
-            className="btn btn-ghost text-amber-400 hover:bg-amber-500/10 gap-1.5 text-xs"
-          >
-            <Unlink className="w-3.5 h-3.5" />
-            Detach
-          </button>
           <button
             onClick={() => setShowDeleteModal(true)}
             className="btn btn-ghost text-red-400 hover:bg-red-500/10 gap-1.5 text-xs"
@@ -477,18 +458,9 @@ export default function SpokeDetailPage() {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteCluster}
         title="Delete Cluster"
-        message={`This will permanently delete the ManagedCluster "${clusterName}" and all associated namespace resources. This action cannot be undone.`}
+        message={`This deletes the ManagedCluster "${clusterName}" from the hub, which detaches it from ACM and removes its namespace resources. ZTP-owned install resources (ClusterDeployment, ClusterInstance, BMH) may also be removed. This action cannot be undone.`}
         confirmText={clusterName || ''}
         variant="danger"
-      />
-      <ConfirmationModal
-        open={showDetachModal}
-        onClose={() => setShowDetachModal(false)}
-        onConfirm={handleDetachCluster}
-        title="Detach Cluster"
-        message={`This will detach the spoke cluster "${clusterName}" from this hub. The spoke cluster itself will continue running but will no longer be managed.`}
-        confirmText={clusterName || ''}
-        variant="warning"
       />
     </div>
   );

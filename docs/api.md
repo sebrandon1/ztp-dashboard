@@ -9,6 +9,7 @@
 | `GET` | `/api/clusters/:name` | Cluster detail |
 | `GET` | `/api/clusters/:name/pipeline` | Pipeline status |
 | `GET` | `/api/clusters/:name/policies` | Cluster policies |
+| `DELETE` | `/api/clusters/:name` | Delete the ManagedCluster (detaches from ACM; body must confirm the name) |
 | `GET` | `/api/argocd/applications` | ArgoCD applications |
 | `GET` | `/api/events` | Recent events |
 | `GET` | `/api/ai/status` | Ollama status |

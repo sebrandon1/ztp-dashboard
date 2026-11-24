@@ -57,7 +57,6 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/clusters/{name}/pipeline", s.handleGetPipeline)
 	mux.HandleFunc("GET /api/clusters/{name}/resources", s.handleListClusterResources)
 	mux.HandleFunc("DELETE /api/clusters/{name}", s.handleDeleteCluster)
-	mux.HandleFunc("POST /api/clusters/{name}/detach", s.handleDetachCluster)
 
 	// Spoke Health
 	mux.HandleFunc("GET /api/clusters/{name}/health", s.handleGetClusterHealth)
