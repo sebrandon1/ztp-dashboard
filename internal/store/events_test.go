@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -183,5 +184,75 @@ func TestNewEventStoreCreatesFile(t *testing.T) {
 
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		t.Fatal("expected database file to be created")
+	}
+}
+
+func TestIterate(t *testing.T) {
+	s := tempDB(t)
+
+	events := []ws.WatchEvent{
+		{EventType: "ADDED", ResourceType: "ManagedCluster", Name: "cluster1", Severity: "good", Timestamp: "2025-01-01T10:00:00Z"},
+		{EventType: "MODIFIED", ResourceType: "Policy", Name: "policy1", Severity: "bad", Timestamp: "2025-01-01T11:00:00Z"},
+		{EventType: "MODIFIED", ResourceType: "ManagedCluster", Name: "cluster2", Severity: "bad", Timestamp: "2025-01-01T12:00:00Z"},
+	}
+	for _, e := range events {
+		if err := s.Insert(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var names []string
+	if err := s.Iterate(EventQuery{Severity: "bad"}, func(e ws.WatchEvent) error {
+		names = append(names, e.Name)
+		return nil
+	}); err != nil {
+		t.Fatalf("Iterate: %v", err)
+	}
+
+	if len(names) != 2 {
+		t.Fatalf("Iterate yielded %d events, want 2", len(names))
+	}
+	// Same ordering as Query: newest first.
+	if names[0] != "cluster2" || names[1] != "policy1" {
+		t.Errorf("Iterate order = %v, want [cluster2 policy1]", names)
+	}
+}
+
+func TestIterateStopsOnCallbackError(t *testing.T) {
+	s := tempDB(t)
+	for _, name := range []string{"a", "b", "c"} {
+		if err := s.Insert(ws.WatchEvent{
+			EventType: "ADDED", ResourceType: "Policy", Name: name,
+			Timestamp: "2025-01-01T10:00:00Z",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	stopErr := errors.New("stop")
+	calls := 0
+	err := s.Iterate(EventQuery{}, func(ws.WatchEvent) error {
+		calls++
+		return stopErr
+	})
+	if !errors.Is(err, stopErr) {
+		t.Fatalf("Iterate error = %v, want stop error", err)
+	}
+	if calls != 1 {
+		t.Errorf("callback called %d times, want 1", calls)
+	}
+}
+
+func TestIterateEmpty(t *testing.T) {
+	s := tempDB(t)
+	calls := 0
+	if err := s.Iterate(EventQuery{}, func(ws.WatchEvent) error {
+		calls++
+		return nil
+	}); err != nil {
+		t.Fatalf("Iterate: %v", err)
+	}
+	if calls != 0 {
+		t.Errorf("callback called %d times, want 0", calls)
 	}
 }

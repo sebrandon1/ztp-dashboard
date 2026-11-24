@@ -405,3 +405,66 @@ func TestRecordEvent(t *testing.T) {
 		t.Fatal("expected stats")
 	}
 }
+
+func TestExportEvents(t *testing.T) {
+	s := newTestServer(t)
+	for _, e := range []ws.WatchEvent{
+		{EventType: "ADDED", ResourceType: "ManagedCluster", Name: "cluster-a", Severity: "good", Summary: "joined", Timestamp: "2025-01-01T10:00:00Z"},
+		{EventType: "MODIFIED", ResourceType: "Policy", Name: "policy-a", Severity: "bad", Summary: "non-compliant", Timestamp: "2025-01-01T11:00:00Z"},
+	} {
+		if err := s.eventStore.Insert(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("csv", func(t *testing.T) {
+		rec := do(t, s, http.MethodGet, "/api/events/export?format=csv&severity=bad", "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if got := rec.Header().Get("Content-Type"); got != "text/csv" {
+			t.Errorf("Content-Type = %q, want text/csv", got)
+		}
+		if got := rec.Header().Get("Content-Disposition"); !strings.Contains(got, "attachment") {
+			t.Errorf("Content-Disposition = %q, want attachment", got)
+		}
+		lines := strings.Split(strings.TrimSpace(rec.Body.String()), "\n")
+		if len(lines) != 2 {
+			t.Fatalf("csv lines = %d (%q), want header + one row", len(lines), rec.Body.String())
+		}
+		if !strings.HasPrefix(lines[0], "timestamp,severity,event_type") {
+			t.Errorf("header = %q", lines[0])
+		}
+		if !strings.Contains(lines[1], "policy-a") {
+			t.Errorf("row = %q, want policy-a", lines[1])
+		}
+	})
+
+	t.Run("ndjson default", func(t *testing.T) {
+		rec := do(t, s, http.MethodGet, "/api/events/export", "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if got := rec.Header().Get("Content-Type"); got != "application/x-ndjson" {
+			t.Errorf("Content-Type = %q, want application/x-ndjson", got)
+		}
+		lines := strings.Split(strings.TrimSpace(rec.Body.String()), "\n")
+		if len(lines) != 2 {
+			t.Fatalf("ndjson lines = %d, want 2", len(lines))
+		}
+		var event map[string]interface{}
+		if err := json.Unmarshal([]byte(lines[0]), &event); err != nil {
+			t.Fatalf("decoding ndjson line: %v", err)
+		}
+		if event["name"] != "policy-a" {
+			t.Errorf("first exported event = %v, want policy-a", event["name"])
+		}
+	})
+
+	t.Run("bad format", func(t *testing.T) {
+		rec := do(t, s, http.MethodGet, "/api/events/export?format=xml", "")
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want 400", rec.Code)
+		}
+	})
+}

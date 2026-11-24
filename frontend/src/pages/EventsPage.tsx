@@ -75,28 +75,20 @@ export default function EventsPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
-  const handleExportCSV = async () => {
+  const handleExport = async (format: 'csv' | 'json') => {
     try {
-      const result = await eventsAPI.query({
-        q: query || undefined,
-        severity: severityFilter !== 'all' ? severityFilter : undefined,
-        limit: 500,
-      });
-      const rows = (result.events || []).map(e => [
-        e.timestamp || '',
-        e.event_type,
-        e.resource_type,
-        e.name,
-        e.namespace,
-        e.severity,
-        `"${(e.summary || '').replace(/"/g, '""')}"`,
-      ]);
-      const csv = ['Timestamp,Event Type,Resource Type,Name,Namespace,Severity,Summary', ...rows.map(r => r.join(','))].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const blob = await eventsAPI.exportEvents(
+        {
+          q: query || undefined,
+          severity: severityFilter !== 'all' ? severityFilter : undefined,
+        },
+        format,
+      );
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ztp-events-${new Date().toISOString().slice(0, 10)}.csv`;
+      const extension = format === 'csv' ? 'csv' : 'ndjson';
+      a.download = `ztp-events-${new Date().toISOString().slice(0, 10)}.${extension}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -142,12 +134,20 @@ export default function EventsPage() {
             {paused ? 'Resume' : 'Pause'}
           </button>
           <button
-            onClick={handleExportCSV}
+            onClick={() => handleExport('csv')}
             className="btn btn-secondary gap-2"
             title="Export filtered events as CSV"
           >
             <Download className="w-4 h-4" />
             CSV
+          </button>
+          <button
+            onClick={() => handleExport('json')}
+            className="btn btn-secondary gap-2"
+            title="Export filtered events as newline-delimited JSON"
+          >
+            <Download className="w-4 h-4" />
+            JSON
           </button>
         </div>
       </div>

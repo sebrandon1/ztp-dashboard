@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { UNAUTHORIZED_EVENT, getAuthToken, storeAuthToken } from './api';
+import { UNAUTHORIZED_EVENT, eventsExportPath, getAuthToken, storeAuthToken } from './api';
 
 describe('auth token storage', () => {
   afterEach(() => {
@@ -34,5 +34,17 @@ describe('auth token storage', () => {
 
   it('exposes a stable unauthorized event name', () => {
     expect(UNAUTHORIZED_EVENT).toBe('ztp:unauthorized');
+  });
+});
+
+describe('eventsExportPath', () => {
+  it('includes filters and the format', () => {
+    expect(eventsExportPath({ q: 'cluster', severity: 'bad' }, 'csv')).toBe(
+      '/api/events/export?q=cluster&severity=bad&format=csv',
+    );
+  });
+
+  it('works without filters', () => {
+    expect(eventsExportPath(undefined, 'json')).toBe('/api/events/export?format=json');
   });
 });

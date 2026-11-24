@@ -133,18 +133,41 @@ export const aiAPI = {
   },
 };
 
+/** Search parameters shared by event queries and exports. */
+function eventSearchParams(params?: EventQueryParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  if (params?.q) searchParams.set('q', params.q);
+  if (params?.severity) searchParams.set('severity', params.severity);
+  if (params?.resource_type) searchParams.set('resource_type', params.resource_type);
+  if (params?.from) searchParams.set('from', params.from);
+  if (params?.to) searchParams.set('to', params.to);
+  return searchParams;
+}
+
+/** Path of the streaming export endpoint for the given filters. */
+export function eventsExportPath(params: EventQueryParams | undefined, format: 'csv' | 'json'): string {
+  const searchParams = eventSearchParams(params);
+  searchParams.set('format', format);
+  return `/api/events/export?${searchParams.toString()}`;
+}
+
 export const eventsAPI = {
   query: (params?: EventQueryParams) => {
-    const searchParams = new URLSearchParams();
-    if (params?.q) searchParams.set('q', params.q);
-    if (params?.severity) searchParams.set('severity', params.severity);
-    if (params?.resource_type) searchParams.set('resource_type', params.resource_type);
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
+    const searchParams = eventSearchParams(params);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     const qs = searchParams.toString();
     return unwrap<EventsResponse>(api.get(`/events${qs ? `?${qs}` : ''}`));
   },
   getStats: () => unwrap<EventStats>(api.get('/events/stats')),
+  /** Download every event matching the filters; uses fetch so the bearer token
+   *  header is sent (a plain link could not carry it). */
+  exportEvents: async (params: EventQueryParams | undefined, format: 'csv' | 'json'): Promise<Blob> => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(eventsExportPath(params, format), { headers });
+    if (!res.ok) throw new Error('Event export failed');
+    return res.blob();
+  },
 };
