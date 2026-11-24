@@ -22,6 +22,9 @@ make test
 # Run tests with coverage and enforce the minimum total
 make coverage
 
+# Run frontend tests (Vitest + React Testing Library)
+make frontend-test
+
 # Lint
 make lint
 ```
