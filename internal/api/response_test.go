@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -249,5 +250,51 @@ func TestStatusForError(t *testing.T) {
 				t.Errorf("statusForError(%v) = %d, want %d", tt.err, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestDecodeJSON(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"cluster-a"}`))
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := decodeJSON(rec, req, &body); err != nil {
+		t.Fatalf("decodeJSON() error = %v", err)
+	}
+	if body.Name != "cluster-a" {
+		t.Errorf("decoded name = %q, want cluster-a", body.Name)
+	}
+}
+
+func TestDecodeJSONRejectsOversizeBody(t *testing.T) {
+	rec := httptest.NewRecorder()
+	oversize := `{"name":"` + strings.Repeat("a", maxJSONBodyBytes) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(oversize))
+	var body struct {
+		Name string `json:"name"`
+	}
+	err := decodeJSON(rec, req, &body)
+	if err == nil {
+		t.Fatal("decodeJSON() error = nil, want MaxBytesError")
+	}
+	var maxErr *http.MaxBytesError
+	if !errors.As(err, &maxErr) {
+		t.Fatalf("decodeJSON() error = %v, want *http.MaxBytesError", err)
+	}
+
+	writeDecodeError(rec, err)
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusRequestEntityTooLarge)
+	}
+}
+
+func TestWriteDecodeErrorInvalidJSON(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{`))
+	var body struct{}
+	writeDecodeError(rec, decodeJSON(rec, req, &body))
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 }

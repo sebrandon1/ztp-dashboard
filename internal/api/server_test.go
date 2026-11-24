@@ -247,6 +247,31 @@ func TestAIDiagnoseStream(t *testing.T) {
 	}
 }
 
+func TestAIDiagnoseBodyTooLarge(t *testing.T) {
+	s := newTestServer(t)
+	body := `{"type":"general","context":{"blob":"` + strings.Repeat("a", maxJSONBodyBytes) + `"}}`
+	rec := do(t, s, http.MethodPost, "/api/ai/diagnose", body)
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("diagnose = %d, want 413", rec.Code)
+	}
+}
+
+func TestSetPolicyStateInvalidBody(t *testing.T) {
+	s := newTestServer(t, policyObj("cluster-a", "policy-a", "compliant"))
+	rec := do(t, s, http.MethodPost, "/api/clusters/cluster-a/policies/policy-a/state", `{`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("set policy state = %d, want 400", rec.Code)
+	}
+}
+
+func TestSyncArgoApplicationEmptyBody(t *testing.T) {
+	s := newTestServer(t, argoAppObj("app-a", "Healthy", "Synced"))
+	rec := do(t, s, http.MethodPost, "/api/argocd/applications/app-a/sync", "")
+	if rec.Code != http.StatusOK {
+		t.Errorf("sync with empty body = %d, want 200", rec.Code)
+	}
+}
+
 func TestEvents(t *testing.T) {
 	s := newTestServer(t)
 	for _, sev := range []string{"info", "warning", "info"} {

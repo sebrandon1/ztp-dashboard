@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -91,9 +93,10 @@ func (s *Server) handleSyncArgoApplication(w http.ResponseWriter, r *http.Reques
 	name := r.PathValue("name")
 
 	var opts hub.SyncOptions
-	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
-		// Body is optional; default options are fine
-		opts = hub.SyncOptions{}
+	// Body is optional; only an empty body falls back to default options.
+	if err := decodeJSON(w, r, &opts); err != nil && !errors.Is(err, io.EOF) {
+		writeDecodeError(w, err)
+		return
 	}
 
 	if err := s.hubManager.SyncArgoApplication(r.Context(), name, opts); err != nil {
@@ -119,8 +122,8 @@ func (s *Server) handleSetPolicyState(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Disabled bool `json:"disabled"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &body); err != nil {
+		writeDecodeError(w, err)
 		return
 	}
 
@@ -175,8 +178,8 @@ func (s *Server) handleDeleteCluster(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ConfirmName string `json:"confirmName"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &body); err != nil {
+		writeDecodeError(w, err)
 		return
 	}
 
@@ -262,8 +265,8 @@ type diagnoseRequest struct {
 
 func (s *Server) handleAIDiagnose(w http.ResponseWriter, r *http.Request) {
 	var req diagnoseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeDecodeError(w, err)
 		return
 	}
 
