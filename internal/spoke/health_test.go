@@ -2,6 +2,7 @@ package spoke
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -141,6 +142,34 @@ func newTestService(t *testing.T) *Service {
 		"kubeconfig": kubeconfigFor(srv.URL),
 	}))
 	return NewService(hubClient, k8s.NewClientPool(10*time.Minute, 5))
+}
+
+func TestGetSpokeClientNilHub(t *testing.T) {
+	svc := NewService(nil, k8s.NewClientPool(time.Minute, 1))
+	if _, err := svc.getSpokeClient(context.Background(), testCluster); !errors.Is(err, ErrNotConnected) {
+		t.Fatalf("getSpokeClient() error = %v, want ErrNotConnected", err)
+	}
+}
+
+func TestGetHealthNilHub(t *testing.T) {
+	svc := NewService(nil, k8s.NewClientPool(time.Minute, 1))
+	if _, err := svc.GetHealth(context.Background(), testCluster); !errors.Is(err, ErrNotConnected) {
+		t.Fatalf("GetHealth() error = %v, want ErrNotConnected", err)
+	}
+}
+
+func TestGetNodesNilHub(t *testing.T) {
+	svc := NewService(nil, k8s.NewClientPool(time.Minute, 1))
+	if _, err := svc.GetNodes(context.Background(), testCluster); !errors.Is(err, ErrNotConnected) {
+		t.Fatalf("GetNodes() error = %v, want ErrNotConnected", err)
+	}
+}
+
+func TestGetOperatorsNilHub(t *testing.T) {
+	svc := NewService(nil, k8s.NewClientPool(time.Minute, 1))
+	if _, err := svc.GetOperators(context.Background(), testCluster); !errors.Is(err, ErrNotConnected) {
+		t.Fatalf("GetOperators() error = %v, want ErrNotConnected", err)
+	}
 }
 
 func TestGetSpokeClientMissingSecret(t *testing.T) {
