@@ -9,6 +9,7 @@ import ArgoPage from './pages/ArgoPage';
 import ArgoAppDetailPage from './pages/ArgoAppDetailPage';
 import EventsPage from './pages/EventsPage';
 import SettingsPage from './pages/SettingsPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useHub } from './hooks/useHub';
 import { UNAUTHORIZED_EVENT } from './lib/api';
@@ -41,6 +42,7 @@ function App() {
           <Route path="argocd/:name" element={<ArgoAppDetailPage />} />
           <Route path="events" element={<EventsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </>
