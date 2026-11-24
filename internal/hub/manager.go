@@ -666,12 +666,6 @@ func (m *Manager) DeleteManagedCluster(ctx context.Context, name string) error {
 	return nil
 }
 
-// DetachManagedCluster removes a ManagedCluster CR without destroying resources.
-// This is the same operation as delete on the CR level; the distinction is semantic.
-func (m *Manager) DetachManagedCluster(ctx context.Context, name string) error {
-	return m.DeleteManagedCluster(ctx, name)
-}
-
 // ListClusterResources lists resources in a cluster namespace for pre-delete review.
 func (m *Manager) ListClusterResources(ctx context.Context, clusterName string) ([]ResourceSummary, error) {
 	if m.client == nil {

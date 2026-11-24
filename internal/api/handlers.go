@@ -192,29 +192,6 @@ func (s *Server) handleDeleteCluster(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted", "cluster": name})
 }
 
-func (s *Server) handleDetachCluster(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("name")
-
-	var body struct {
-		ConfirmName string `json:"confirmName"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if body.ConfirmName != name {
-		writeError(w, http.StatusBadRequest, "cluster name confirmation does not match")
-		return
-	}
-
-	if err := s.hubManager.DetachManagedCluster(r.Context(), name); err != nil {
-		writeError(w, statusForError(err), err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "detached", "cluster": name})
-}
-
 func (s *Server) handleListClusterResources(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	resources, err := s.hubManager.ListClusterResources(r.Context(), name)
