@@ -38,15 +38,12 @@ make help                  # Show all available targets
 - `main.go` + `cmd/` - Cobra CLI with `serve` subcommand
 - `internal/config/` - Configuration struct, flag/env loading
 - `internal/k8s/` - Kubernetes client (typed + dynamic), GVR definitions for ZTP CRDs, ClientPool for spoke connections (LRU eviction, TTL-based expiry)
-- `internal/hub/` - Hub lifecycle, ManagedCluster operations, pipeline status aggregation
+- `internal/hub/` - Hub lifecycle, ManagedCluster operations, pipeline status aggregation, ArgoCD sync/refresh
 - `internal/spoke/` - Spoke cluster service layer; connects to spoke K8s APIs via hub kubeconfig secrets, queries ClusterVersion, nodes, and ClusterOperators for health status
 - `internal/store/` - SQLite-backed event persistence (modernc.org/sqlite, WAL mode); searchable/filterable event log with background purge loop (7-day retention, hourly sweep)
 - `internal/ai/` - Ollama HTTP client, ZTP-specific prompt templates, SSE streaming
 - `internal/api/` - HTTP server with go:embed, REST handlers, middleware
 - `internal/ws/` - WebSocket hub, client, K8s watch bridge for ~9 CRD types
-- `internal/argocd/` - ArgoCD health monitoring (placeholder, not yet implemented)
-- `internal/bmc/` - BMC event management (placeholder, not yet implemented)
-- `internal/ztp/` - ZTP-specific logic (placeholder, not yet implemented)
 - `frontend/` - React 19 + TypeScript + Vite + Tailwind v4 + Zustand + framer-motion
 
 ## Key Patterns

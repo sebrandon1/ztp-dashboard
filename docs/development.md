@@ -37,6 +37,8 @@ ztp-dashboard/
 │   │   ├── client.go                # K8s client wrapper
 │   │   └── gvr.go                   # GVR constants for ZTP CRDs
 │   ├── hub/manager.go               # Hub operations + pipeline aggregation
+│   ├── spoke/health.go              # Spoke cluster health queries
+│   ├── store/events.go              # SQLite event persistence
 │   ├── ai/
 │   │   ├── client.go                # Ollama HTTP client
 │   │   └── prompts.go               # ZTP-specific prompt templates
