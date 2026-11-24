@@ -2,6 +2,7 @@ package api
 
 import (
 	"bufio"
+	"crypto/subtle"
 	"fmt"
 	"log/slog"
 	"net"
@@ -61,6 +62,51 @@ func corsMiddleware(allowed []string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// authMiddleware requires a bearer token on API and WebSocket routes when token
+// is non-empty. Health probes and the embedded SPA stay public. WebSocket
+// clients, which cannot set headers, may pass the token as a query parameter.
+func authMiddleware(token string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if token == "" {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !requiresAuth(r.URL.Path) || tokenMatches(r, token) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+		})
+	}
+}
+
+// requiresAuth reports whether path is an API or WebSocket route.
+func requiresAuth(path string) bool {
+	return path == "/api" || strings.HasPrefix(path, "/api/") ||
+		path == "/ws" || strings.HasPrefix(path, "/ws/")
+}
+
+// tokenMatches reports whether the request carries the expected token in the
+// Authorization header, or, for WebSocket routes, in the token query parameter.
+func tokenMatches(r *http.Request, token string) bool {
+	const bearer = "Bearer "
+	if header := r.Header.Get("Authorization"); strings.HasPrefix(header, bearer) {
+		if constantTimeEqual(strings.TrimPrefix(header, bearer), token) {
+			return true
+		}
+	}
+	if strings.HasPrefix(r.URL.Path, "/ws") {
+		if queryToken := r.URL.Query().Get("token"); queryToken != "" {
+			return constantTimeEqual(queryToken, token)
+		}
+	}
+	return false
+}
+
+func constantTimeEqual(got, want string) bool {
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {

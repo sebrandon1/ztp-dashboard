@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Toaster, toast } from 'sonner';
 import Layout from './components/Layout';
 import DashboardPage from './pages/DashboardPage';
 import ClustersPage from './pages/ClustersPage';
@@ -10,10 +11,22 @@ import EventsPage from './pages/EventsPage';
 import SettingsPage from './pages/SettingsPage';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useHub } from './hooks/useHub';
+import { UNAUTHORIZED_EVENT } from './lib/api';
 
 function App() {
   useWebSocket();
   useHub();
+  const navigate = useNavigate();
+
+  // A rejected token sends the user to Settings to enter a valid one.
+  useEffect(() => {
+    const onUnauthorized = () => {
+      toast.error('Authentication required. Enter your API token in Settings.');
+      navigate('/settings');
+    };
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+  }, [navigate]);
 
   return (
     <>

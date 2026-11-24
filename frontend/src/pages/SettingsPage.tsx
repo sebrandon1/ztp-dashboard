@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Server, Bot, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Settings, Server, Bot, CheckCircle2, XCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDashboardStore } from '../lib/store';
-import { aiAPI } from '../lib/api';
+import { aiAPI, getAuthToken } from '../lib/api';
 import type { AIStatus, AIModel } from '../types/api';
 
 export default function SettingsPage() {
-  const { hubStatus, wsConnected } = useDashboardStore();
+  const { hubStatus, wsConnected, authToken, setAuthToken } = useDashboardStore();
   const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
   const [models, setModels] = useState<AIModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tokenDraft, setTokenDraft] = useState(getAuthToken());
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +77,56 @@ export default function SettingsPage() {
                 <><CheckCircle2 className="w-4 h-4" /> Connected</>
               ) : (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Reconnecting</>
+              )}
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* API authentication */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="card"
+      >
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-border-subtle">
+          <ShieldCheck className="w-4 h-4 text-text-muted" />
+          <h2 className="text-sm font-semibold text-text-primary">API Authentication</h2>
+        </div>
+        <div className="p-5 space-y-3">
+          <p className="text-sm text-text-secondary">
+            Required when the server is started with <code className="font-mono text-xs">--auth-token</code>.
+            The token is stored in this browser only.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              value={tokenDraft}
+              onChange={(e) => setTokenDraft(e.target.value)}
+              placeholder="Bearer token"
+              aria-label="API token"
+              className="flex-1 rounded-lg bg-surface/50 border border-border-subtle px-3 py-2 text-sm text-text-primary font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setAuthToken(tokenDraft.trim());
+                setTokenDraft(tokenDraft.trim());
+                toast.success(tokenDraft.trim() ? 'API token saved' : 'API token cleared');
+              }}
+              className="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-400"
+            >
+              Save
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-text-secondary">Configured</span>
+            <span className="flex items-center gap-2 text-sm">
+              {authToken ? (
+                <><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Yes</>
+              ) : (
+                <><XCircle className="w-4 h-4 text-text-muted" /> No</>
               )}
             </span>
           </div>

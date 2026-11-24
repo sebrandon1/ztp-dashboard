@@ -1,9 +1,13 @@
 import { create } from 'zustand';
 import type { HubStatus, ManagedClusterInfo, WatchEvent, WSMessage } from '../types/api';
+import { getAuthToken, storeAuthToken } from './api';
 
 interface DashboardState {
   wsConnected: boolean;
   setWSConnected: (connected: boolean) => void;
+
+  authToken: string;
+  setAuthToken: (token: string) => void;
 
   hubStatus: HubStatus | null;
   setHubStatus: (status: HubStatus) => void;
@@ -29,6 +33,12 @@ const MAX_EVENTS = 500;
 export const useDashboardStore = create<DashboardState>((set) => ({
   wsConnected: false,
   setWSConnected: (connected) => set({ wsConnected: connected }),
+
+  authToken: getAuthToken(),
+  setAuthToken: (token) => {
+    storeAuthToken(token);
+    set({ authToken: token });
+  },
 
   hubStatus: null,
   setHubStatus: (status) => set({ hubStatus: status }),

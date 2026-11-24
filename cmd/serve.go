@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -44,6 +45,17 @@ func runServe(_ *cobra.Command, _ []string) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	if cfg.AuthToken == "" && cfg.AuthTokenFile != "" {
+		data, err := os.ReadFile(cfg.AuthTokenFile)
+		if err != nil {
+			return fmt.Errorf("reading auth token file: %w", err)
+		}
+		cfg.AuthToken = strings.TrimSpace(string(data))
+	}
+	if cfg.AuthToken == "" {
+		slog.Warn("authentication disabled: set --auth-token or ZTP_AUTH_TOKEN to require a bearer token")
+	}
 
 	k8sClient, err := k8s.NewClient(cfg.KubeConfig)
 	if err != nil {

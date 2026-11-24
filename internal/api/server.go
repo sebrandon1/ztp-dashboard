@@ -93,7 +93,7 @@ func (s *Server) Handler() http.Handler {
 	// SPA
 	mux.Handle("/", spaHandler())
 
-	handler := recoveryMiddleware(loggingMiddleware(corsMiddleware(s.cfg.AllowedOrigins)(mux)))
+	handler := recoveryMiddleware(loggingMiddleware(corsMiddleware(s.cfg.AllowedOrigins)(authMiddleware(s.cfg.AuthToken)(mux))))
 	return handler
 }
 

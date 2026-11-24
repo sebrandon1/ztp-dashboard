@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reconnectDelay } from './useWebSocket';
+import { buildWebSocketURL, reconnectDelay } from './useWebSocket';
 
 describe('reconnectDelay', () => {
   it('starts at one second and doubles each attempt', () => {
@@ -13,5 +13,17 @@ describe('reconnectDelay', () => {
     expect(reconnectDelay(5)).toBe(30000);
     expect(reconnectDelay(10)).toBe(30000);
     expect(reconnectDelay(100)).toBe(30000);
+  });
+});
+
+describe('buildWebSocketURL', () => {
+  it('omits the token query when no token is configured', () => {
+    expect(buildWebSocketURL('')).toBe(`ws://${window.location.host}/ws/watch`);
+  });
+
+  it('appends an encoded token query parameter', () => {
+    expect(buildWebSocketURL('a b/c')).toBe(
+      `ws://${window.location.host}/ws/watch?token=${encodeURIComponent('a b/c')}`,
+    );
   });
 });

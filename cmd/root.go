@@ -39,6 +39,8 @@ func init() {
 	defaultOllamaModel := confkit.EnvString("OLLAMA_MODEL", "llama3.1")
 	defaultDBPath := confkit.EnvString("ZTP_DB_PATH", "ztp-events.db")
 	defaultAllowedOrigins := parseOrigins(confkit.EnvString("ZTP_ALLOWED_ORIGINS", ""))
+	defaultAuthToken := confkit.EnvString("ZTP_AUTH_TOKEN", "")
+	defaultAuthTokenFile := confkit.EnvString("ZTP_AUTH_TOKEN_FILE", "")
 
 	rootCmd.PersistentFlags().StringVar(&cfg.KubeConfig, "kubeconfig", defaultKubeconfig,
 		"Path to kubeconfig file (env: KUBECONFIG)")
@@ -54,6 +56,10 @@ func init() {
 		"Path to SQLite event database (env: ZTP_DB_PATH)")
 	rootCmd.PersistentFlags().StringSliceVar(&cfg.AllowedOrigins, "allowed-origins", defaultAllowedOrigins,
 		"Origins allowed to call the API and open the WebSocket, e.g. https://dashboard.example.com (env: ZTP_ALLOWED_ORIGINS, comma-separated)")
+	rootCmd.PersistentFlags().StringVar(&cfg.AuthToken, "auth-token", defaultAuthToken,
+		"Bearer token required on /api and /ws routes; empty disables authentication (env: ZTP_AUTH_TOKEN)")
+	rootCmd.PersistentFlags().StringVar(&cfg.AuthTokenFile, "auth-token-file", defaultAuthTokenFile,
+		"File containing the bearer token, for Kubernetes Secret mounts (env: ZTP_AUTH_TOKEN_FILE)")
 }
 
 // parseOrigins splits a comma-separated origin list, trimming blanks.

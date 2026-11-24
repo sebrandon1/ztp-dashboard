@@ -11,6 +11,8 @@
 | `--log-format` | `LOG_FORMAT` | `text` | Log format (`text` or `json`) |
 | `--db-path` | `ZTP_DB_PATH` | `ztp-events.db` | Path to the SQLite event database; parent directories are created if missing |
 | `--allowed-origins` | `ZTP_ALLOWED_ORIGINS` | — (same-origin only) | Comma-separated extra origins allowed to call the API and open the WebSocket |
+| `--auth-token` | `ZTP_AUTH_TOKEN` | — (authentication disabled) | Bearer token required on `/api` and `/ws` routes |
+| `--auth-token-file` | `ZTP_AUTH_TOKEN_FILE` | — | File containing the bearer token, e.g. a mounted Kubernetes Secret |
 
 ## Running with Ollama AI
 
@@ -65,3 +67,22 @@ host differs from the backend `Host` header:
 `make frontend-dev` proxies through Vite with `changeOrigin`, so the backend sees
 `Origin: http://localhost:5173` while `Host` is `localhost:8080`; include
 `http://localhost:5173` to use the dev server against a locally running backend.
+
+## Authentication
+
+Authentication is opt-in. When `--auth-token` (or `ZTP_AUTH_TOKEN`) is set, every
+`/api/*` and `/ws/*` request must carry `Authorization: Bearer <token>`;
+`/healthz`, `/readyz` and the static SPA stay public. With no token configured the
+server logs a warning at startup and accepts all callers.
+
+```bash
+# Inline token
+./bin/ztp-dashboard serve --auth-token="$TOKEN"
+
+# Token from a mounted Secret (preferred; keeps the token out of ps output)
+./bin/ztp-dashboard serve --auth-token-file=/run/secrets/ztp-token
+```
+
+Enter the same token on the Settings page of the dashboard; it is stored in the
+browser's `localStorage` and sent with every API request and WebSocket
+connection.

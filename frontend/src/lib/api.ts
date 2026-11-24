@@ -25,6 +25,55 @@ const api = axios.create({
   timeout: 30000,
 });
 
+const AUTH_TOKEN_KEY = 'ztp-auth-token';
+
+/** Event dispatched when the API answers 401 so the UI can prompt for a token. */
+export const UNAUTHORIZED_EVENT = 'ztp:unauthorized';
+
+// Fallback for browsers where localStorage is unavailable (private mode).
+let memoryToken = '';
+
+/** Bearer token configured by the user in Settings, or ''. */
+export function getAuthToken(): string {
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY) || memoryToken;
+  } catch {
+    return memoryToken;
+  }
+}
+
+/** Persist the bearer token; an empty string clears it. */
+export function storeAuthToken(token: string): void {
+  memoryToken = token;
+  try {
+    if (token) {
+      window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+    } else {
+      window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  } catch {
+    // localStorage unavailable; the in-memory copy still applies this session.
+  }
+}
+
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
+    return Promise.reject(error);
+  },
+);
+
 async function unwrap<T>(promise: Promise<{ data: APIResponse<T> }>): Promise<T> {
   const { data } = await promise;
   if (!data.success) throw new Error(data.error || 'Unknown error');
@@ -73,9 +122,12 @@ export const aiAPI = {
   getStatus: () => unwrap<AIStatus>(api.get('/ai/status')),
   getModels: () => unwrap<AIModel[]>(api.get('/ai/models')),
   diagnose: (context: Record<string, unknown>, model?: string, type?: string) => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
     return fetch('/api/ai/diagnose', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ context, model, type }),
     });
   },
